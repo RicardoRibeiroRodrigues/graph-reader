@@ -1,0 +1,36 @@
+#selectedArea {
+    border: 2px dashed red;
+    position: absolute;
+    pointer-events: none;
+}
+
+#canvas {
+    border: 1px solid black;
+    cursor: crosshair;
+}
+
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.canvas-container {
+    margin-top: 25px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.buttons-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 0 10px;
+}
+
+#canvas-output {
+    margin-top: 25px;
+}

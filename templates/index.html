@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleção de Área na Imagem</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/script.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <input type="file" id="inputImage" accept="image/*">
+        <div class="canvas-container" >
+            <canvas id="canvas"></canvas>
+            <div class="buttons-container">
+                <button id="resetButton">Reset</button>
+                <button id="boundingBox1Button">Graph Bounding Box</button>
+                <button id="boundingBox2Button">Axis Y</button>
+                <button id="boundingBox3Button">Axis X</button>
+                <button id="sendButton">Send</button>
+            </div>
+        </div>
+        <canvas id="canvas-output"></canvas>
+    </div>
+
+</body>
+
+</html>
+
