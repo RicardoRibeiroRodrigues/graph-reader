@@ -19,7 +19,6 @@ def extract_text(img) -> str:
     img = img.copy()
     # dilate and erode
     _, img = cv2.threshold(img, 0, 200, cv2.THRESH_BINARY)
-    debug_image(img)
     kernel = np.ones((1, 1), np.uint8)
     img = cv2.dilate(img, kernel, iterations=1)
     img = cv2.erode(img, kernel, iterations=1)
@@ -122,4 +121,4 @@ def process_image_route():
         return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
