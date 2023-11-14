@@ -29,18 +29,18 @@ def extract_text(img) -> str:
 
 def detect_text(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
- 
+
     # Performing OTSU threshold
     _, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
 
     rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
-    
+
     # Applying dilation on the threshold image
     dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
 
     # Finding contours
     contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    
+
     return contours
 
 def get_bounding_box(b_box_json):
@@ -51,13 +51,20 @@ def get_bounding_box(b_box_json):
     return x_min, y_min, x_max, y_max
 
 
+def extract_text_from_region(region):
+    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    text = pytesseract.image_to_string(thresh, config='--psm 6')
+    return text.strip()
+
 def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Decode the base64 image data and convert it to a NumPy array
     image_bytes = io.BytesIO(image_data)
     image_array = np.frombuffer(image_bytes.getvalue(), dtype=np.uint8)
     image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
+
     # Extract bounding box coordinates from JSON string
     box_graph = json.loads(b_box_graph)
     box_axis_x = json.loads(b_box_x)
@@ -71,7 +78,7 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
 
     x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
     axis_y = image[y_min:y_max, x_min:x_max]
-    
+
 
     graph_contours = detect_text(graph)
     axis_x_contours = detect_text(axis_x)
@@ -85,7 +92,7 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
         x, y, w, h = cv2.boundingRect(contour)
         # x_list.append(extract_text(axis_x[y:y+h, x:x+w]))
         cv2.rectangle(axis_x, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    
+
     y_list = []
     for contour in axis_y_contours:
         x, y, w, h = cv2.boundingRect(contour)
@@ -93,7 +100,36 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
         cv2.rectangle(axis_y, (x, y), (x + w, y + h), (0, 255, 0), 2)
     print(x_list)
     print(y_list)
-    # Return the processed image as a base64 encoded string
+    # Detectar texto nos eixos x e y
+    x_min, y_min, x_max, y_max = get_bounding_box(box_axis_x)
+    axis_x = image[y_min:y_max, x_min:x_max]
+    x_text = extract_text_from_region(axis_x)
+
+    text_size_x = cv2.getTextSize(x_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+
+    x_min_text = x_min  # Ajuste conforme necessário
+    y_min_text = y_max + text_size_x[1] + 5  # Ajuste conforme necessário
+
+    cv2.putText(image, x_text, (x_min_text, y_min_text), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2, cv2.LINE_AA)
+
+    x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
+    axis_y = image[y_min:y_max, x_min:x_max]
+    y_text = extract_text_from_region(axis_y)
+
+    text_size_y = cv2.getTextSize(y_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+
+    x_min_text = x_min  # Ajuste conforme necessário
+    y_min_text = y_max + text_size_y[1] + 5  # Ajuste conforme necessário
+
+    cv2.putText(image, y_text, (x_min_text, y_min_text), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2, cv2.LINE_AA)
+
+    # Desenhar retângulos em torno das áreas onde o texto foi detectado
+    cv2.rectangle(image, (x_min, y_min), (x_max, y_max),
+                  (0, 255, 0), 2)  # Eixo X
+    cv2.rectangle(image, (x_min, y_min), (x_max, y_max),
+                  (0, 255, 0), 2)  # Eixo Y
+
+    # Return a base64 encoded image with detected text and rectangles
     _, img_encoded = cv2.imencode('.png', image)
     img_base64 = img_encoded.tobytes()
     return img_base64
