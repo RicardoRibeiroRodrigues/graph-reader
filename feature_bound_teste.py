@@ -4,6 +4,7 @@ import numpy as np
 import io
 import json
 import pytesseract
+import re
 
 app = Flask(__name__)
 
@@ -33,17 +34,16 @@ def detect_text(img, var):
 
     # Redução de ruído e aumento de contraste
  
-    thr = cv2.adaptiveThreshold(gray, 255, 
-            cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
-    
-    #thr = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    
+    #thr = cv2.adaptiveThreshold(gray, 255, 
+            #cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
+        
     if var == 'x':
-        extracted_text = pytesseract.image_to_string(thr, config='--psm 6')
+        extracted_text = pytesseract.image_to_string(img, config='--psm 6')
         lista_dados.append(extracted_text)
     
     if var == 'y':
-        extracted_text = pytesseract.image_to_string(thr, config='--psm 6')
+        custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
+        extracted_text = pytesseract.image_to_string(img, config=custom_config)
         lista_dados.append(extracted_text)
     
 
@@ -58,22 +58,54 @@ def get_bounding_box(b_box_json):
 
 def process_detected_text(text_list):
     processed_list = []
-    last_valid_number = None
 
     for text in text_list:
-        # Remove quebras de linha e espaços em branco e separa os números
-        numbers = [int(num.strip()) for num in text.split() if num.strip().replace('-', '').isdigit()]
+        # Utilize expressão regular para capturar números decimais
+        numbers = re.findall(r"[-+]?\d*\.\d+|[-+]?\d+", text)
+        numbers = [float(num) for num in numbers]  # Converta para float se forem números decimais
         
-        if numbers:
-            # Verifica se há uma diferença maior que um intervalo entre números consecutivos
-            if last_valid_number is not None and numbers[0] - last_valid_number > 1:
-                # Corrige o número seguindo a lógica da escala
-                numbers[0] = last_valid_number + 1
-            
-            last_valid_number = numbers[-1]
-            processed_list.extend(numbers)
-    
+        for i in range(len(numbers)):
+            processed_list.append(numbers[i])
+
     return processed_list
+
+def corrigir_intervalo(lista):
+    nova_lista = []
+    
+    if len(lista) < 2:
+        return lista  # Retorna a lista original se tiver menos de dois elementos
+
+    intervalo = lista[3] - lista[2] # [0 1 2 3 4]
+
+    # Adiciona o primeiro número à nova lista
+    nova_lista.append(lista[3] - 3*intervalo)
+
+    # Continua a sequência com base no intervalo detectado
+    for i in range(1, len(lista)):
+        # Verifica se o número é um float
+        if isinstance(lista[i], float):
+            # Calcula o intervalo considerando a parte fracionária
+            diff = lista[i] - lista[i - 1]
+            decimal_diff = round(diff % 1, 1)  # Obtém a parte fracionária e arredonda para 1 casa decimal
+
+            if decimal_diff != intervalo:
+                # Se a diferença não estiver correta, calcula o novo número
+                nova_lista.append(round(nova_lista[-1] + intervalo, 1))
+            else:
+                # Mantém o número original na lista
+                nova_lista.append(lista[i])
+        elif isinstance(lista[i], int):
+            # Para números inteiros, aplica a lógica anteriormente utilizada
+            if lista[i] - lista[i - 1] != intervalo:
+                nova_lista.append(nova_lista[-1] + intervalo)
+            else:
+                nova_lista.append(lista[i])
+        else:
+            # Mantém qualquer outro tipo de dado na lista
+            nova_lista.append(lista[i])
+
+    return nova_lista
+
 
 def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Decode the base64 image data and convert it to a NumPy array
@@ -116,17 +148,23 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Processamento dos dados do eixo X e eixo Y
     processed_text_x = process_detected_text(texto_x)
     processed_text_y = process_detected_text(texto_y)
+    filtro_f = corrigir_intervalo(processed_text_y)
+    filtro_f2 = corrigir_intervalo(processed_text_x)
+
 
     print("Eixo X não-processado:", texto_x)
     print("Eixo X processado:", processed_text_x)
+    print("Eixo X - Corrigido (se necessário)", filtro_f2)
     print("------------------------")
     print("Eixo Y não-processado", texto_y)
     print("Eixo Y processado:", processed_text_y)
-    
+    print("Eixo Y - Corrigido (se necessário)", filtro_f)
+
 
     # Return the processed image as a base64 encoded string
     _, img_encoded = cv2.imencode('.png', image)
     img_base64 = img_encoded.tobytes()
+
     return img_base64
 
 @app.route('/')
