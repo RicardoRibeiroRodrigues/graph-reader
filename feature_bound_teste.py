@@ -36,18 +36,42 @@ def detect_text(img, var):
  
     #thr = cv2.adaptiveThreshold(gray, 255, 
             #cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
-        
+
     if var == 'x':
-        extracted_text = pytesseract.image_to_string(img, config='--psm 6')
+        #print(img.shape)
+        altura_x, largura_x, canais_x = img.shape
+        print(altura_x)
+        if altura_x < 30:
+            res_x = cv2.resize(img, (largura_x+20, altura_x+20), interpolation=cv2.INTER_CUBIC)
+            extracted_text = pytesseract.image_to_string(res_x, config='--psm 6')
+            print("RES_X:", res_x.shape)
+        else: 
+            extracted_text = pytesseract.image_to_string(img, config='--psm 6')
+            print("IMG_X:", img.shape)
+        #print(res.shape)
+        
         lista_dados.append(extracted_text)
     
     if var == 'y':
         custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
-        extracted_text = pytesseract.image_to_string(img, config=custom_config)
+        altura_y, largura_y, canais_y = img.shape
+        print(largura_y)
+        if largura_y < 35:
+            res_y = cv2.resize(img, (largura_y+20, altura_y+20))
+            extracted_text = pytesseract.image_to_string(res_y, config=custom_config)
+            print("RES_Y:", res_y.shape)
+        else:
+            extracted_text = pytesseract.image_to_string(img, config=custom_config)
+            print("IMG_Y:", img.shape)
+        
         lista_dados.append(extracted_text)
     
 
     return contours, lista_dados
+
+def resize_image(img, new_width, new_height):
+    resized_img = cv2.resize(img, (new_width, new_height))
+    return resized_img
 
 def get_bounding_box(b_box_json):
     x_min = round(b_box_json['x_min'])
@@ -127,7 +151,7 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
 
     x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
     axis_y = image[y_min:y_max, x_min:x_max]
-    
+
 
     graph_contours, texto_grafico = detect_text(graph, "qualquer")
     axis_x_contours, texto_x = detect_text(axis_x, "x")
