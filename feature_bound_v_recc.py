@@ -32,8 +32,8 @@ def detect_text(img, var):
 
     # Redução de ruído e aumento de contraste
  
-    #thr = cv2.adaptiveThreshold(gray, 255, 
-            #cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
+    thr = cv2.adaptiveThreshold(gray, 255, 
+            cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
 
     if var == 'x':
         #print(img.shape)
@@ -69,11 +69,11 @@ def detect_text(img, var):
         graph_points = defaultdict(list)
 
         # Percorre a imagem para encontrar os pontos não brancos
-        for y in range(gray.shape[0]):
-            for x in range(gray.shape[1]):
-                pixel_value = gray[y, x]
+        for y in range(thr.shape[0]):
+            for x in range(thr.shape[1]):
+                pixel_value = thr[y, x]
                 if pixel_value < 255:  # Se o pixel não for branco
-                    graph_points[x].append(y)  # Armazena o valor y para a coordenada x
+                    graph_points[x].append(-y)  # Armazena o valor y para a coordenada x
 
         # Calcula a média dos valores de y para cada coordenada x
         for x, y_values in graph_points.items():
@@ -243,9 +243,13 @@ def plot_graph(graph_points):
     # Separa as coordenadas x e y ordenadas
     x_values, y_values = zip(*sorted_points)
 
+    # Seleciona apenas cada décimo ponto
+    x_values_subset = x_values[::10]
+    y_values_subset = y_values[::10]
+
     # Plota o gráfico
     plt.figure(figsize=(8, 6))
-    plt.plot(x_values, y_values, marker='o', linestyle='-')
+    plt.plot(x_values_subset, y_values_subset, linestyle='-')
     plt.xlabel('Coordenada X')
     plt.ylabel('Coordenada Y')
     plt.title('Gráfico a partir dos pontos detectados')
