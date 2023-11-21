@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, render_template, make_response, Response
+from flask import Flask, request, jsonify, render_template, make_response
+from utils import *
 import cv2
 import numpy as np
 import io
@@ -6,14 +7,6 @@ import json
 import pytesseract
 
 app = Flask(__name__)
-
-
-def debug_image(img):
-    cv2.imshow('Image', img)
-    while True:
-        if cv2.waitKey(0) == ord('q'):
-            break
-    cv2.destroyAllWindows()
 
 def extract_text(img) -> str:
     img = img.copy()
@@ -98,6 +91,38 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     img_base64 = img_encoded.tobytes()
     return img_base64
 
+def process_handdrawn_graph(image_data):
+    image_bytes = io.BytesIO(image_data)
+    image_array = np.frombuffer(image_bytes.getvalue(), dtype=np.uint8)
+    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    blur = cv2.GaussianBlur(gray, (11, 11), 0)
+    # Performing OTSU threshold
+    _, thresh1 = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+
+    # Applying dilation on the threshold image
+    dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+    
+    # Finding contours
+    contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    cv2.drawContours(image, contours, -1, (0, 0, 255), 3)
+
+    graph_b_box = find_handdrawn_bbox(image)
+    graph_data = get_graph_data_norm(image, graph_b_box)
+    # Save as csv
+    with open('graph_data.csv', 'w') as f:
+        f.write('x,y\n')
+        for point in graph_data:
+            f.write(f'{point[0]},{point[1]}\n')
+
+    # Return the processed image as a base64 encoded string
+    _, img_encoded = cv2.imencode('.png', image)
+    img_base64 = img_encoded.tobytes()
+    return img_base64 
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -105,14 +130,17 @@ def index():
 @app.route('/process-image', methods=['POST'])
 def process_image_route():
     try:
+        is_synthetic = True if request.form['isSynthetic'] == "true" else False
         image_data = request.files['image'].read()
-        graph_box = request.form['graphBox']
-        axis_x_box = request.form['axisXBox']
-        axis_y_box = request.form['axisYBox']
         width = request.form['width']
         height = request.form['height']
-
-        processed_image_data = process_image(image_data, graph_box, axis_x_box, axis_y_box, width, height)
+        if is_synthetic:
+            graph_box = request.form['graphBox']
+            axis_x_box = request.form['axisXBox']
+            axis_y_box = request.form['axisYBox']
+            processed_image_data = process_image(image_data, graph_box, axis_x_box, axis_y_box, width, height)
+        else:
+            processed_image_data = process_handdrawn_graph(image_data)
         response = make_response(processed_image_data)
         response.headers['Content-Type'] = 'image/png'
         return response
