@@ -9,7 +9,9 @@ from collections import defaultdict
 import re
 import matplotlib.pyplot as plt
 import matplotlib
+import tkinter
 matplotlib.use('TkAgg')
+#plt.switch_backend('TkAgg')
 
 app = Flask(__name__)
 
@@ -36,32 +38,26 @@ def detect_text(img, var):
             cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
 
     if var == 'x':
-        #print(img.shape)
         altura_x, largura_x, canais_x = img.shape
         print(altura_x)
         if altura_x < 30:
             res_x = cv2.resize(img, (largura_x+20, altura_x+20), interpolation=cv2.INTER_CUBIC)
             extracted_text = pytesseract.image_to_string(res_x, config='--psm 6')
-            print("RES_X:", res_x.shape)
         else: 
             extracted_text = pytesseract.image_to_string(img, config='--psm 6')
-            print("IMG_X:", img.shape)
-        #print(res.shape)
-        
+
+      
         lista_dados.append(extracted_text)
     
     if var == 'y':
         custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
         altura_y, largura_y, canais_y = img.shape
-        print(largura_y)
         if largura_y < 35:
             res_y = cv2.resize(img, (largura_y+20, altura_y+20))
             extracted_text = pytesseract.image_to_string(res_y, config=custom_config)
-            print("RES_Y:", res_y.shape)
         else:
             extracted_text = pytesseract.image_to_string(img, config=custom_config)
-            print("IMG_Y:", img.shape)
-        
+
         lista_dados.append(extracted_text)
 
     if var=="grafico":
@@ -77,7 +73,7 @@ def detect_text(img, var):
 
         # Calcula a média dos valores de y para cada coordenada x
         for x, y_values in graph_points.items():
-            graph_points[x] = int(np.mean(y_values))
+            graph_points[x] = float(np.mean(y_values))
  
     return contours, lista_dados, graph_points
 
@@ -87,7 +83,6 @@ def get_bounding_box(b_box_json):
     x_max = x_min + round(b_box_json['width'])
     y_max = y_min + round(b_box_json['height'])
     return x_min, y_min, x_max, y_max
-
 
 def corrigir_intervalo(lista):
     nova_lista = []
@@ -139,6 +134,18 @@ def process_detected_text(text_list):
 
     return processed_list
 
+def process_eixoX_text(text_list):
+    processed_list = []
+
+    for text in text_list:
+        # Remover \n e dividir os itens conforme os espaços em branco
+        text_without_newline = text.replace('\n', '')
+        processed_items = text_without_newline.split()
+        processed_list.extend(processed_items)
+
+    return processed_list
+
+
 def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Decode the base64 image data and convert it to a NumPy array
     image_bytes = io.BytesIO(image_data)
@@ -151,15 +158,14 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     box_axis_x = json.loads(b_box_x)
     box_axis_y = json.loads(b_box_y)
 
-    x_min, y_min, x_max, y_max = get_bounding_box(box_graph)
-    graph = image[y_min:y_max, x_min:x_max]
+    x_min_graf, y_min_graf, x_max_graf, y_max_graf = get_bounding_box(box_graph)
+    graph = image[y_min_graf:y_max_graf, x_min_graf:x_max_graf]
 
-    x_min, y_min, x_max, y_max = get_bounding_box(box_axis_x)
-    axis_x = image[y_min:y_max, x_min:x_max]
+    x_min_box_x, y_min_box_x, x_max_box_x, y_max_box_x = get_bounding_box(box_axis_x)
+    axis_x = image[y_min_box_x:y_max_box_x, x_min_box_x:x_max_box_x]
 
-    x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
-    axis_y = image[y_min:y_max, x_min:x_max]
-
+    x_min_box_y, y_min_box_y, x_max_box_y, y_max_box_y = get_bounding_box(box_axis_y)
+    axis_y = image[y_min_box_y:y_max_box_y, x_min_box_y:x_max_box_y]
 
     graph_contours, texto_grafico, pontos_graf = detect_text(graph, "grafico")
     axis_x_contours, texto_x, xxx = detect_text(axis_x, "x")
@@ -168,7 +174,6 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Draw contours
     cv2.drawContours(graph, graph_contours, -1, (0, 0, 255), 3)
 
-    
     for contour in axis_x_contours:
         x, y, w, h = cv2.boundingRect(contour)
         cv2.rectangle(axis_x, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -180,22 +185,35 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Processamento dos dados do eixo X e eixo Y
     processed_text_x = process_detected_text(texto_x)
     processed_text_y = process_detected_text(texto_y)
-    filtro_f = corrigir_intervalo(processed_text_y)
-    filtro_f2 = corrigir_intervalo(processed_text_x)
+    filtro_y = corrigir_intervalo(processed_text_y)
+    filtro_x = corrigir_intervalo(processed_text_x)
+    eixo_x_texto = process_eixoX_text(texto_x)
 
 
     print("Eixo X não-processado:", texto_x)
+    print("Eixo X TEXTO processado:", eixo_x_texto)
     print("Eixo X processado:", processed_text_x)
-    print("Eixo X - Corrigido (se necessário)", filtro_f2)
+    print("Eixo X - Corrigido (se necessário)", filtro_x)
     print("------------------------")
     print("Eixo Y não-processado", texto_y)
     print("Eixo Y processado:", processed_text_y)
-    print("Eixo Y - Corrigido (se necessário)", filtro_f)
+    print("Eixo Y - Corrigido (se necessário)", filtro_y)
     print("------------------------")
-    print(pontos_graf)
+    #print("Esses são os pontos do gráfico:", pontos_graf)
+    print("------------------------")
+    print("------------------------")
 
+    scale_y = (max(filtro_y) - min(filtro_y)) / (y_max_box_y - y_min_box_y)
+    real_values_y = [(-pixel_value + y_min_box_y) * (-scale_y) + max(filtro_y) for pixel_value in pontos_graf.values()]
 
-    plot_graph(pontos_graf)
+    # Escalas de conversão entre pixels e valores reais nos eixos X e Y
+    if isinstance(filtro_x, float):
+        scale_x = (max(filtro_x) - min(filtro_x)) / (x_max_box_x - x_min_box_x)
+        real_values_x = [(-pixel_value + x_min_box_x) * (-scale_x) + max(filtro_x) for pixel_value in range(x_min_box_x, x_max_box_x)]
+        plot_graph(pontos_graf, None, real_values_y, real_values_x)
+    else:
+        print("Tentativa de conversão de escala:" , real_values_y)
+        plot_graph(pontos_graf, eixo_x_texto, real_values_y, None)
 
     # Return the processed image as a base64 encoded string
     _, img_encoded = cv2.imencode('.png', image)
@@ -236,26 +254,55 @@ def process_handdrawn_graph(image_data):
     img_base64 = img_encoded.tobytes()
     return img_base64 
 
-def plot_graph(graph_points):
+
+    # Verifica se os valores do eixo Y são todos números
+    y_values = list(axis_values.values())
+
+    if all(isinstance(value, (int, float)) for value in y_values):
+        min_y = min(y_values)
+        max_y = max(y_values)
+
+        # Normaliza os valores do eixo Y no intervalo [0, 1]
+        normalized_y_values = [(val - min_y) / (max_y - min_y) for val in y_values]
+
+        # Atualiza os valores do dicionário com os valores normalizados do eixo Y
+        for i, (key, _) in enumerate(axis_values.items()):
+            axis_values[key] = normalized_y_values[i]
+
+    # Retorna o dicionário modificado ou não modificado se não forem apenas números
+    return axis_values
+
+
+def plot_graph(graph_points, eixo_x_texto, eixo_y, eixo_x):
     # Ordena os pontos pela chave (coordenada x)
     sorted_points = graph_points.items()
 
     # Separa as coordenadas x e y ordenadas
     x_values, y_values = zip(*sorted_points)
 
-    # Seleciona apenas cada décimo ponto
-    x_values_subset = x_values[::10]
-    y_values_subset = y_values[::10]
+    # Filtro para ver se eixo X é texto ou não.
+    if eixo_x_texto is None:
+        eixoX = eixo_x
+    else:
+        eixoX = eixo_x_texto
+
+    # Ajuste do eixo Y para ter o mesmo número de pontos que o eixo X
+    if len(eixo_y) > len(eixoX):
+        eixo_y = eixo_y[:len(eixoX)]  # Reduz o eixo Y para o mesmo comprimento do eixo X
+    elif len(eixo_y) < len(eixoX):
+        eixoX = np.linspace(min(eixoX), max(eixoX), len(eixo_y))
+
+    print("Esse é o eixo_X final: ", eixoX)
+    print("Esse é o eixo_y final: ", eixo_y)
 
     # Plota o gráfico
     plt.figure(figsize=(8, 6))
-    plt.plot(x_values_subset, y_values_subset, linestyle='-')
+    plt.plot(eixoX, eixo_y, linestyle='-')
     plt.xlabel('Coordenada X')
     plt.ylabel('Coordenada Y')
     plt.title('Gráfico a partir dos pontos detectados')
     plt.grid(True)
     plt.show()
-
 
 
 @app.route('/')
