@@ -3,14 +3,12 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const canvasOut = document.getElementById('canvas-output');
 const ctxOut = canvasOut.getContext('2d');
-const syntheticSwitch = document.getElementById('syntetic-switch');
 const resetButton = document.getElementById('resetButton');
 const bBox1 = document.getElementById('boundingBox1Button');
 const bBox2 = document.getElementById('boundingBox2Button');
 const bBox3 = document.getElementById('boundingBox3Button');
 
 let startX, startY, isDrawing = false;
-let isSyntetic = true;
 let x, y;
 let img;
 let selectedBoundingBox = 'Graph';
@@ -36,9 +34,21 @@ function handleImageSelect(event) {
     reader.onload = function (e) {
         img = new Image();
         img.onload = function () {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
             // set canvas size to minimum of image size and screen size
             // canvas.width = Math.min(img.width, window.innerWidth);
             // canvas.height = Math.min(img.height, window.innerHeight);
+            // Resize image to fit canvas in the same aspect ratio
+            const img_ration = img.width / img.height;
+            const max_percent = 0.5;
+            if (img.width > windowWidth * max_percent) {
+                img.width = windowWidth * max_percent;
+                img.height = img.width / img_ration;
+            } else if (img.height > windowHeight * max_percent) {
+                img.height = windowHeight * max_percent;
+                img.width = img.height * img_ration;
+            }
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -50,7 +60,6 @@ function handleImageSelect(event) {
 }
 
 canvas.addEventListener('mousedown', (event) => {
-    if (!isSyntetic) return;
     
     isDrawing = true;
     startX = event.clientX - canvas.getBoundingClientRect().left;
@@ -134,8 +143,7 @@ function dataURLtoBlob(dataURL) {
 }
 
 document.getElementById('sendButton').addEventListener('click', () => {
-    if (!isSyntetic || (graphBoundingBox && axisXBoundingBox && axisYBoundingBox)) {
-        console.log(isSyntetic);
+    if ((graphBoundingBox && axisXBoundingBox && axisYBoundingBox)) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
@@ -143,17 +151,14 @@ document.getElementById('sendButton').addEventListener('click', () => {
 
         const formData = new FormData();
         formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
-        formData.append('isSynthetic', JSON.stringify(isSyntetic));
-        if (isSyntetic) {
-            formData.append('graphBox', JSON.stringify(graphBoundingBox));
-            formData.append('axisXBox', JSON.stringify(axisXBoundingBox));
-            formData.append('axisYBox', JSON.stringify(axisYBoundingBox));
-        }
+        formData.append('graphBox', JSON.stringify(graphBoundingBox));
+        formData.append('axisXBox', JSON.stringify(axisXBoundingBox));
+        formData.append('axisYBox', JSON.stringify(axisYBoundingBox));
         formData.append('width', JSON.stringify(canvas.width));
         formData.append('height', JSON.stringify(canvas.height));
         // resetBoundingBoxes();
 
-        fetch('/process-image', {
+        fetch('/process-image-syntetic', {
             method: 'POST',
             body: formData
         })
@@ -180,13 +185,3 @@ function resetBoundingBoxes() {
     axisXBoundingBox = null;
     axisYBoundingBox = null;
 }
-
-// Syntetic graph/hand drawn
-syntheticSwitch.addEventListener('change', () => {
-    isSyntetic = !isSyntetic;
-    bBox1.classList.toggle('hidden');
-    bBox2.classList.toggle('hidden');
-    bBox3.classList.toggle('hidden');
-    resetButton.classList.toggle('hidden');
-    resetBoundingBoxes();
-});

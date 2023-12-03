@@ -1,40 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seleção de Área na Imagem</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <script defer src="/static/script.js"></script>
+    <title>Graph Scanner</title>
+    <!-- Add any additional styles or link to external stylesheets here -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #project-description {
+            margin-bottom: 20px;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        .button {
+            padding: 10px;
+            font-size: 16px;
+            text-decoration: none;
+            color: #fff;
+            background-color: #007BFF;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="input-container">
-            <input type="file" id="inputImage" accept="image/*">
-            <!-- Switch for syntetic/handdraw graph -->
-            <div class="switch-container">
-                <label class="switch">
-                    <input type="checkbox" id="syntetic-switch" checked>
-                    <span class="slider round">Is syntetic graph</span>
-                </label>
-            </div>
-        </div>
-        <div class="canvas-container" >
-            <canvas id="canvas"></canvas>
-            <div class="buttons-container" id="buttons-container">
-                <button id="resetButton">Reset</button>
-                <button id="boundingBox1Button">Graph Bounding Box</button>
-                <button id="boundingBox2Button">Axis Y</button>
-                <button id="boundingBox3Button">Axis X</button>
-                <button id="sendButton">Send</button>
-            </div>
-        </div>
-        <canvas id="canvas-output"></canvas>
+    <div id="project-description">
+        <h1>Your Project Name</h1>
+        <p>
+            Welcome to our project! This is a brief description of what our project is about.
+            Feel free to explore and learn more about the different paths available.
+        </p>
     </div>
 
+    <div class="button-container">
+        <a href="/syntetic-graph" class="button">Syntetic Graph</a>
+        <a href="/handdrawn-graph" class="button">Handdrawn Graph</a>
+    </div>
+
+    <!-- Add any additional content or scripts here -->
 </body>
-
 </html>
-

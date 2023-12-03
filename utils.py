@@ -1,117 +1,66 @@
 import cv2
 import numpy as np
-from math import cos, sin
+import io
+
+
+def cv2_image_from_bytes(image_data, color_mode=cv2.IMREAD_COLOR):
+    # Decode the base64 image data and convert it to a NumPy array
+    image_bytes = io.BytesIO(image_data)
+    image_array = np.frombuffer(image_bytes.getvalue(), dtype=np.uint8)
+    image = cv2.imdecode(image_array, color_mode)
+    return image
+
+
+def cv2_image_to_bytes(image):
+    # Encode the image as a base64 string
+    _, img_encoded = cv2.imencode(".png", image)
+    img_base64 = img_encoded.tobytes()
+    return img_base64
+
 
 def debug_image(img):
-    cv2.imshow('Image', img)
+    cv2.imshow("Image", img)
     while True:
-        if cv2.waitKey(0) == ord('q'):
+        if cv2.waitKey(0) == ord("q"):
             break
     cv2.destroyAllWindows()
 
 
-def hough_inter(theta1, rho1, theta2, rho2):
-    A = np.array([[cos(theta1), sin(theta1)], 
-                  [cos(theta2), sin(theta2)]])
-    b = np.array([rho1, rho2])
-    return np.linalg.lstsq(A, b)[0] # use lstsq to solve Ax = b, not inv() which is unstable
-
 def line_intersec(a1, b1, a2, b2):
     # Solve for x (the intersection point)
     x = (b2 - b1) / (a1 - a2)
-
     # Substitute x back into one of the equations to find y
     y = a1 * x + b1
-
     return round(x), round(y)
 
-def find_handdrawn_bbox(img) -> list:
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Blur the image to reduce noise
-    blur = cv2.blur(img_gray, (3, 3))
-    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    # Canny edge detection
-    # edges = cv2.Canny(blur, 280, 400, apertureSize=3)
+def get_angle_between_lines(m1, m2):
+    div = 1 + m1 * m2
+    if div == 0:
+        return 0
+    angle = np.arctan((m2 - m1) / div)
+    angle_deg = np.rad2deg(angle)
+    return angle_deg
 
-    # Erode
-    k = 1
-    kernel = np.ones((k, k), np.uint8)
-    edges = cv2.erode(thresh, kernel, iterations = 1)
-
-    # Dilate
-    kernel = np.ones((k, k),np.uint8)
-    edges = cv2.dilate(thresh, kernel, iterations = 1)
-
-    # Find lines
-    width = img.shape[1]
-    height = img.shape[0]
-    min_line_length = min(int(0.6 * width), int(0.6 * height))
-    # lines = cv2.HoughLines(edges, 1, np.pi/180, 240)
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, 500, minLineLength=min_line_length, maxLineGap=3)
-
-    # Find intersections
-    intersections = []
-    if lines is None:
-        return intersections
-    
-    for line1 in lines:
-        for line2 in lines:
-            x1, y1, x2, y2 = line1[0]
-            x3, y3, x4, y4 = line2[0]
-            a1 = (y2 - y1) / (x2 - x1)
-            a2 = (y4 - y3) / (x4 - x3)
-            b1 = y1 - a1 * x1
-            b2 = y3 - a2 * x3
-            if abs(a1 - a2) < 0.001:
-                continue
-            
-            cv2.line(img,(x1,y1),(x2,y2),(255,0, 0),2)
-            cv2.line(img,(x3,y3),(x4,y4),(255,0, 0),2)
-            x, y = line_intersec(a1, b1, a2, b2)
-            if x < 0 or x > width or y < 0 or y > height:
-                continue
-            intersections.append((x, y))
-            cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-    
-    # Lowest y value in the mask -> y_min
-    # Highest x value in the mask -> x_max
-    # Intersections -> Graph origin -> (x_min, y_max)
-    valid_graph_points = np.where(thresh == 255)
-    y_min = np.min(valid_graph_points[0])
-    x_min = intersections[0][0]
-    y_max = intersections[0][1]
-    x_max = np.max(valid_graph_points[1])
-    cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-    # X min of the axis -> x_min_axis
-    x_min_axis = np.min(valid_graph_points[1])
-    # Bounding box of the graph -> (x_min, y_min, x_max, y_max)
-    bbox_1 = (x_min, y_min, x_max, y_max)
-    # Bounding box of the graph + axis -> (x_min_axis, y_min, x_max, y_max)
-    bbox_2 = (x_min_axis, y_min, x_max, y_max)
-    source_points_1 = np.float32([[bbox_1[0], bbox_1[1]], [bbox_1[2], bbox_1[1]], [bbox_1[0], bbox_1[3]], [bbox_1[2], bbox_1[3]]])
-    source_points_2 = np.float32([[bbox_2[0], bbox_2[1]], [bbox_2[2], bbox_2[1]], [bbox_2[0], bbox_2[3]], [bbox_2[2], bbox_2[3]]])
-
-    # Concatenate the source points of both bounding boxes
-    corrected_image = perspective_removal(img, source_points_1, source_points_2)
-    debug_image(corrected_image)
-    return bbox_1
 
 def perspective_removal(image, source_points, destination_points):
     # Read the image
     original_image = image.copy()
-
-    # Convert points to NumPy arrays
-    source_points = np.float32(source_points)
-    destination_points = np.float32(destination_points)
-
     # Calculate the homography matrix
     homography_matrix = cv2.getPerspectiveTransform(source_points, destination_points)
-
+    # Calculate the inverse homography
+    inverse_homography_matrix = np.linalg.inv(homography_matrix)
+    # Apply the inverse homography to the destination points
+    warped_point = cv2.perspectiveTransform(
+        np.array([destination_points]), inverse_homography_matrix
+    )
     # Apply the homography to obtain the perspective-corrected image
-    corrected_image = cv2.warpPerspective(original_image, homography_matrix, (original_image.shape[1], original_image.shape[0]))
-
-    return corrected_image
+    corrected_image = cv2.warpPerspective(
+        original_image,
+        homography_matrix,
+        (original_image.shape[1], original_image.shape[0]),
+    )
+    return corrected_image, warped_point[0]
 
 
 def get_graph_data_norm(img, bbox) -> list:
@@ -124,10 +73,10 @@ def get_graph_data_norm(img, bbox) -> list:
     _, thresh1 = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
     rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
     # Applying dilation on the threshold image
-    dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+    dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
 
     graph_points = []
-    
+
     # Loop points of theshold image
     white_points = np.where(dilation == 255)
     x_points, y_points = white_points[1], white_points[0]
@@ -136,5 +85,36 @@ def get_graph_data_norm(img, bbox) -> list:
     y_points = (y_points - y_min) / (y_max - y_min)
     for x, y in zip(x_points, y_points):
         graph_points.append((x, y))
-    
+
     return graph_points
+
+
+def ransac(points) -> tuple:
+    # RANSAC parameters
+    threshold = 0.1
+    best_slope = 0
+    best_intercept = 0
+    best_inliers = []
+
+    for point1 in points:
+        for point2 in points:
+            if point1 == point2:
+                continue
+            # Calculate the slope and intercept of the line
+            slope = (point2[1] - point1[1]) / (point2[0] - point1[0])
+            intercept = point1[1] - slope * point1[0]
+            # Calculate the distance of each point to the line
+            distances = []
+            for point in points:
+                distance = (
+                    abs(point[1] - slope * point[0] - intercept)
+                    / (slope**2 + 1) ** 0.5
+                )
+                distances.append(distance)
+            # Count the number of inliers
+            inliers = np.where(np.array(distances) < threshold)[0]
+            if len(inliers) > len(best_inliers):
+                best_inliers = inliers
+                best_slope = slope
+                best_intercept = intercept
+    return best_slope, best_intercept, best_inliers

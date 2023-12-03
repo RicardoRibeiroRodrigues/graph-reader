@@ -1,0 +1,37 @@
+<!-- config_tab.html -->
+<div id="sidebar">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">×</a>
+    <div id="config-tab" class="config-container">
+        <h2>Configuration</h2>
+        <label class="input-label" for="threshold">Threshold:</label><br>
+        <input class="number-input" type="number" id="threshold" value="{{ threshold }}" min="0" max="255"><br>
+
+        <label class="input-label" for="k">K:</label><br>
+        <input class="number-input" type="number" id="k" value="{{ k }}" min="1"><br>
+
+        <label class="input-label" for="blur">Blur:</label><br>
+        <input class="number-input" type="number" id="blur" value="{{ blur }}" min="1"><br>
+    </div>
+    <div id="config-tab-1" style="display: none;" class="config-container">
+        <h2>Configuration</h2>
+        <label class="input-label" for="line_threshold">Line Threshold:</label><br>
+        <input class="number-input" type="number" id="line_threshold" value="{{ line_threshold }}" min="0"><br>
+
+        <label class="input-label" for="min_line_percentage">Min Line Percentage:</label><br>
+        <input class="number-input" type="number" id="min_line_percentage" value="{{ min_line_percentage }}" min="0" max="1"><br>
+
+        <label class="input-label" for="max_line_gap">Max Line Gap:</label><br>
+        <input class="number-input" type="number" id="max_line_gap" value="{{ max_line_gap }}" min="1"><br>
+    </div>
+
+    <div id="config-tab-2" style="display: none;" class="config-container">
+        <h2>Configuration</h2>
+        <label class="input-label" for="pad_size_x">Bound box pad size x:</label><br>
+        <input class="number-input" type="number" id="pad_size_x" value="{{ pad_size_x }}" min="0"><br>
+
+        <label class="input-label" for="pad_size_y">Bound box pad size y:</label><br>
+        <input class="number-input" type="number" id="pad_size_y" value="{{ pad_size_y }}" min="0"><br>
+    </div>
+    
+    <button class="cool-button" id="reviseButton">Revise</button>
+</div>

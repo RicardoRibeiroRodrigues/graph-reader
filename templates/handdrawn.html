@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handdrawn Graph Scanner</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/hand_script.js"></script>
+</head>
+
+<body>
+    {% include 'config_tab.html' %}
+    {% include 'header.html' %}
+    <span id="openConfig" style="font-size:30px;cursor:pointer" onclick="openNav()">☰ Open Configuration</span>
+
+    <div id="main">
+        <div class="container">
+            <div class="input-container">
+                <input type="file" id="inputImage" accept="image/*">
+            </div>
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+                <div class="buttons-container" id="buttons-container">
+                    <button class="cool-button" id="resetButton">Reset</button>
+                    <button class="cool-button" id="sendButton">Send</button>
+                </div>
+            </div>
+            <canvas id="canvas-output"></canvas>
+        </div>
+    </div>
+
+</body>
+
+</html>
