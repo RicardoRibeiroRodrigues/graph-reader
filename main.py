@@ -7,7 +7,7 @@ import pytesseract
 from hand_graph import HandDrawnGraphPipeline
 import os
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
     pytesseract.pytesseract.tesseract_cmd = r'tesseract'
 
