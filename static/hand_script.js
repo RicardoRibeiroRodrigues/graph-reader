@@ -7,6 +7,8 @@ const resetButton = document.getElementById('resetButton');
 
 let x, y;
 let img;
+let threshold_image;
+let corrected_image;
 let pipeline_stage = 0;
 let thresholdValue = 100, kValue = 5, blurValue = 3;
 
@@ -74,37 +76,47 @@ function dataURLtoBlob(dataURL) {
 }
 
 document.getElementById('sendButton').addEventListener('click', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    let canvasDataUrl;
-    if (pipeline_stage == 0) {
-        canvasDataUrl = canvas.toDataURL();
-    } else if (pipeline_stage >= 1) {
-        canvasDataUrl = canvasOut.toDataURL();
-    }
-
     const formData = new FormData();
-    formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
-    formData.append('width', JSON.stringify(canvas.width));
-    formData.append('height', JSON.stringify(canvas.height));
-
+    
     if (pipeline_stage == 0) {
         pipeline_stage = 1;
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
         fetch_img(formData, '/process-image-hand');
     } else if (pipeline_stage == 1) {
         document.getElementById("config-tab-1").style.display = "block";
         document.getElementById("config-tab").style.display = "none";
         pipeline_stage = 2;
+        formData.append('th_image', threshold_image, 'image.png');
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image1.png');
         fetch_img(formData, '/process-image-hand-1');
     } else if (pipeline_stage == 2) {
         pipeline_stage = 3;
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('th_image', threshold_image, 'image1.png');
         fetch_img(formData, '/process-image-hand-2');
         document.getElementById("config-tab-1").style.display = "none";
         document.getElementById("config-tab-2").style.display = "block";
     } else if (pipeline_stage == 3) {
-        fetch_img(formData, '/process-image-hand-3');
         document.getElementById("config-tab-2").style.display = "none";
+        formData.append('image', corrected_image, 'image.png');
+
+        fetch('/process-image-hand-3', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            // Create a link element and trigger the download
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.csv';
+            a.textContent = 'Download CSV';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        })
+        .catch(error => console.error(error));
     }
 
 });
@@ -112,12 +124,9 @@ document.getElementById('sendButton').addEventListener('click', () => {
 document.getElementById("reviseButton").addEventListener('click', () => {
 
     const formData = new FormData();
-    formData.append('width', JSON.stringify(canvas.width));
-    formData.append('height', JSON.stringify(canvas.height));
-    let canvasDataUrl;
+
     if (pipeline_stage == 1) {
-        canvasDataUrl = canvas.toDataURL();
-        // Add your JavaScript logic for handling configuration inputs
+        // Revise options for image thresholding
         var thresholdInput = document.getElementById('threshold');
         var kInput = document.getElementById('k');
         var blurInput = document.getElementById('blur');
@@ -125,26 +134,32 @@ document.getElementById("reviseButton").addEventListener('click', () => {
         thresholdValue = parseInt(thresholdInput.value);
         kValue = parseInt(kInput.value);
         blurValue = parseInt(blurInput.value);
-        formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
+        // Send both the original image
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        // Send configuration parameters
         formData.append('threshold', JSON.stringify(thresholdValue));
         formData.append('k', JSON.stringify(kValue));
         formData.append('blur', JSON.stringify(blurValue));
         fetch_img(formData, '/process-image-hand');
     } else if (pipeline_stage == 2) {
-        canvasDataUrl = canvasOut.toDataURL();
         let lineThreshold = parseInt(document.getElementById('line_threshold').value);
         let lineMinLineLength = parseFloat(document.getElementById('min_line_percentage').value);
         let lineMaxLineGap = parseInt(document.getElementById('max_line_gap').value);
-        formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
+        // Send both the original image and the thresholded image
+        formData.append('th_image', threshold_image, 'image.png');
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image1.png');
+        // Send configuration parameters
         formData.append('line_threshold', JSON.stringify(lineThreshold));
         formData.append('min_line_percent', JSON.stringify(lineMinLineLength));
         formData.append('max_line_gap', JSON.stringify(lineMaxLineGap));
         fetch_img(formData, '/process-image-hand-1');
     } else if (pipeline_stage == 3) {
-        canvasDataUrl = canvasOut.toDataURL();
         let pad_size_x = parseInt(document.getElementById('pad_size_x').value);
         let pad_size_y = parseInt(document.getElementById('pad_size_y').value);
-        formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
+        // Send both the original image and the thresholded image
+        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('th_image', threshold_image, 'image1.png');
+        // Send configuration parameters
         formData.append('pad_size_x', JSON.stringify(pad_size_x));
         formData.append('pad_size_y', JSON.stringify(pad_size_y));
         fetch_img(formData, '/process-image-hand-2');
@@ -168,6 +183,11 @@ function fetch_img(formData, url) {
                 ctxOut.drawImage(image, 0, 0, canvasOut.width, canvasOut.height);
             };
             image.src = objectURL;
+            if (pipeline_stage == 1) {
+                threshold_image = blob;
+            } else if (pipeline_stage == 3) {
+                corrected_image = blob;
+            } 
         })
         .catch(error => console.error(error));
 }
@@ -184,5 +204,3 @@ function closeNav() {
     document.getElementById("main").style.marginLeft = "0";
     document.getElementById("openConfig").style.display = "block";
 }
-
-// 

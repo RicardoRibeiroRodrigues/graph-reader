@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import json
 from utils import *
 
 class Point:
@@ -15,27 +16,43 @@ class Point:
     
 
 class HandDrawnGraphPipeline:
-    def __init__(self, img):
-        self.original_image = img
+    def __init__(self):
+        self.found_bbox = None
+        self.found_bbox_padded = None
+        self.lines_intersec = None
+        self.threshhold_config = None
+    
+    def toDict(self):
+        return {
+            "found_bbox": self.found_bbox,
+            "found_bbox_padded": self.found_bbox_padded,
+            "lines_intersec": self.lines_intersec,
+            "threshhold_config": self.threshhold_config,
+        }
+    
+    @classmethod
+    def fromDict(cls, d):
+        pipeline = cls()
+        pipeline.found_bbox = d["found_bbox"]
+        pipeline.found_bbox_padded = d["found_bbox_padded"]
+        pipeline.lines_intersec = d["lines_intersec"]
+        pipeline.threshhold_config = d["threshhold_config"]
+        return pipeline
 
     
-    def normalize_point(self, x, y):
+    def normalize_point(self, shape, x, y):
         min_y = self.found_bbox[1]
         min_x = self.found_bbox[0]
         
         # Invert the y-coordinate before normalization
-        inverted_y = self.corrected_image.shape[0] - y
+        inverted_y = shape[0] - y
         
         # Normalize the coordinates
         normalized_x = (x - min_x) / (self.found_bbox[2] - min_x)
         normalized_y = (inverted_y - min_y) / (self.found_bbox[3] - min_y)
         return normalized_x, normalized_y
 
-    def threshold_image(self, threshold_value=100, blur_amount=3, k=5, image=None):
-        if image is None:
-            img = self.original_image.copy()
-        else:
-            img = image.copy()
+    def threshold_image(self, img, threshold_value=100, blur_amount=3, k=5):
         # Convert to gray
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # Blur the image to reduce noise
@@ -47,7 +64,6 @@ class HandDrawnGraphPipeline:
         # Dilate
         kernel = np.ones((k, k), np.uint8)
         edges = cv2.dilate(edges, kernel, iterations=1)
-        self.thresholded = edges
         self.threshhold_config = {
             "threshold_value": threshold_value,
             "blur_amount": blur_amount,
@@ -55,13 +71,10 @@ class HandDrawnGraphPipeline:
         }
         return cv2_image_to_bytes(edges)
 
-    def find_lines(self, line_threshold=60, min_line_percentage=0.25, max_line_gap=3):
-        edges = self.thresholded
-        original_img = self.original_image
-        img = original_img.copy()
+    def find_lines(self, edges, img, line_threshold=60, min_line_percentage=0.25, max_line_gap=3):
         # Find lines
-        width = original_img.shape[1]
-        height = original_img.shape[0]
+        width = edges.shape[1]
+        height = edges.shape[0]
         min_line_length = min(int(min_line_percentage * width), int(min_line_percentage * height))
         lines = cv2.HoughLinesP(
             edges, 1, np.pi / 180, line_threshold, minLineLength=min_line_length, maxLineGap=max_line_gap
@@ -111,15 +124,14 @@ class HandDrawnGraphPipeline:
         return cv2_image_to_bytes(img)
 
 
-    def find_handdrawn_bbox(self, pad_size_x=30, pad_size_y=30) -> list:
-        img = self.original_image.copy()
-        original_img = self.original_image.copy()
-
+    def find_handdrawn_bbox(self, img, thresholded, pad_size_x=30, pad_size_y=30) -> list:
+        original_img = img.copy()
         most_orthogonal_lines_intersec = self.lines_intersec
+
         # Lowest y value in the mask -> y_min
         # Highest x value in the mask -> x_max
         # Intersections -> Graph origin -> (x_min, y_max)
-        valid_graph_points = np.where(self.thresholded == 255)
+        valid_graph_points = np.where(thresholded == 255)
         y_min = np.min(valid_graph_points[0])
         x_min = most_orthogonal_lines_intersec[0]
         y_max = most_orthogonal_lines_intersec[1]
@@ -185,16 +197,16 @@ class HandDrawnGraphPipeline:
         self.corrected_image = corrected_image
         return cv2_image_to_bytes(corrected_image)
 
-    def find_graph_points(self, graph_type: str):
+    def find_graph_points(self, img, graph_type: str):
         if graph_type not in ["line", "bar"]:
             return None
-        img = self.corrected_image.copy()
 
         # If is a line plot, consider only the biggest line (using contour area)
         if graph_type == "line":
             # Find the The thresholded image again, with corrected image.
-            self.threshold_image(**self.threshhold_config, image=self.corrected_image)
-            thresholded_crop = self.thresholded[
+            res = self.threshold_image(img, **self.threshhold_config)
+            th = cv2_image_from_bytes(res, cv2.IMREAD_GRAYSCALE)
+            thresholded_crop = th[
                 self.found_bbox_padded[1] : self.found_bbox_padded[3],
                 self.found_bbox_padded[0] : self.found_bbox_padded[2],
             ]
@@ -213,11 +225,11 @@ class HandDrawnGraphPipeline:
             x_rect, y_rect, w, h = cv2.boundingRect(biggest_contour)
             cv2.rectangle(img, (x_rect, y_rect), (x_rect + w, y_rect + h), (255, 255, 0), 2)
             # Crop the image to the bounding box
-            img_th = self.thresholded[y_rect : y_rect + h, x_rect : x_rect + w]
+            img_th = th[y_rect : y_rect + h, x_rect : x_rect + w]
 
         # Find the graph points as white pixels in the image
         graph_points = np.where(img_th == 255)
-        # # Get the x and y coordinates of the graph points
+        # Add the padding to the points, so they are in the original position
         x_coords = graph_points[1] + x_rect
         y_coords = graph_points[0] + y_rect
         # Sort both coordinates by x
@@ -226,7 +238,7 @@ class HandDrawnGraphPipeline:
         )
         unique_points = set()
         for i in range(0, len(sorted_x_coords), 2):
-            unique_points.add(Point(sorted_x_coords[i], sorted_y_coords[i]))
+            unique_points.add(Point(sorted_x_coords[i] + x_rect, sorted_y_coords[i] + y_rect))
 
         # # Remove duplicate x coordinates
         # unique_points = set()
@@ -247,18 +259,16 @@ class HandDrawnGraphPipeline:
         #         unique_x_coords.append(x + x_rect)
         #         unique_y_coords.append(avg_y_position + y_rect)
         sorted_points = sorted(unique_points, key=lambda point: point.x)
+        str_points = []
+        for point in sorted_points:
+            x, y = self.normalize_point(img.shape, point.x, point.y)
+            str_points.append(f"{x},{y}\n")
+        
+        csv_str = "".join(str_points)
+        # DEBUG
         with open("out.csv", 'w') as f:
-            for point in sorted_points:
-                x, y = self.normalize_point(point.x, point.y)
-                f.write(f"{x},{y}\n")
-
-        # Save as csv
-        # with open("out.csv", 'w') as f:
-        #     for x, y in zip(unique_x_coords, unique_y_coords):
-        #         x, y = self.normalize_point(x, y)
-        #         f.write(f"{x},{y}\n")
-
-        return cv2_image_to_bytes(img)
+            f.write(csv_str)
+        return csv_str.encode("utf-8")
 
         
     
