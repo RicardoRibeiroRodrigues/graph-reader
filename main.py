@@ -221,7 +221,6 @@ def process_hand_graph_3():
 
         handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(session['pipeline'])
         csv = handdrawn_graph_pipeline.find_graph_points(img, graph_type)
-        print(csv)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
 
         response = make_response(csv)

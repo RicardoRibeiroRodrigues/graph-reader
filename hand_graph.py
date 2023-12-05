@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import json
 from utils import *
+import os
+
+DEBUG = os.environ.get("DEBUG", False)
 
 class Point:
     def __init__(self, x, y):
@@ -266,8 +269,10 @@ class HandDrawnGraphPipeline:
         
         csv_str = "".join(str_points)
         # DEBUG
-        with open("out.csv", 'w') as f:
-            f.write(csv_str)
+        if DEBUG:
+            with open("out.csv", 'w') as f:
+                f.write(csv_str)
+        
         return csv_str.encode("utf-8")
 
         
