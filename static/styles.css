@@ -33,10 +33,8 @@
 
 #canvas-output {
     margin-top: 25px;
-<<<<<<< Updated upstream
 }
-=======
-}
+
 
 .hidden {
     display: none;
@@ -54,14 +52,6 @@ button {
     margin: 0 10px;
 }
 
-header {
-    background-color: #007BFF;
-    color: #fff;
-    padding: 10px;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 1rem;
-}
 
 header {
     background-color: #007BFF;
@@ -173,4 +163,3 @@ header {
     font-weight: bold;
 }
 
->>>>>>> Stashed changes
