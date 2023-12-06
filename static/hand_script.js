@@ -7,6 +7,7 @@ const resetButton = document.getElementById('resetButton');
 
 let x, y;
 let img;
+let original_image_blob;
 let threshold_image;
 let corrected_image;
 let pipeline_stage = 0;
@@ -17,6 +18,7 @@ inputImage.addEventListener('change', handleImageSelect);
 function handleImageSelect(event) {
     const file = event.target.files[0];
     const reader = new FileReader();
+    original_image_blob = file;
 
     reader.onload = function (e) {
         resetPipeline();
@@ -80,18 +82,18 @@ document.getElementById('sendButton').addEventListener('click', () => {
     
     if (pipeline_stage == 0) {
         pipeline_stage = 1;
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('image', original_image_blob, 'image.png');
         fetch_img(formData, '/process-image-hand');
     } else if (pipeline_stage == 1) {
         document.getElementById("config-tab-1").style.display = "block";
         document.getElementById("config-tab").style.display = "none";
         pipeline_stage = 2;
         formData.append('th_image', threshold_image, 'image.png');
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image1.png');
+        formData.append('image', original_image_blob, 'image1.png');
         fetch_img(formData, '/process-image-hand-1');
     } else if (pipeline_stage == 2) {
         pipeline_stage = 3;
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('image', original_image_blob, 'image.png');
         formData.append('th_image', threshold_image, 'image1.png');
         fetch_img(formData, '/process-image-hand-2');
         document.getElementById("config-tab-1").style.display = "none";
@@ -99,6 +101,8 @@ document.getElementById('sendButton').addEventListener('click', () => {
     } else if (pipeline_stage == 3) {
         document.getElementById("config-tab-2").style.display = "none";
         formData.append('image', corrected_image, 'image.png');
+        let plotType = document.getElementById('plotType').value;
+        formData.append('plotType', JSON.stringify(plotType));
 
         fetch('/process-image-hand-3', {
             method: 'POST',
@@ -135,7 +139,7 @@ document.getElementById("reviseButton").addEventListener('click', () => {
         kValue = parseInt(kInput.value);
         blurValue = parseInt(blurInput.value);
         // Send both the original image
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('image', original_image_blob, 'image.png');
         // Send configuration parameters
         formData.append('threshold', JSON.stringify(thresholdValue));
         formData.append('k', JSON.stringify(kValue));
@@ -147,7 +151,7 @@ document.getElementById("reviseButton").addEventListener('click', () => {
         let lineMaxLineGap = parseInt(document.getElementById('max_line_gap').value);
         // Send both the original image and the thresholded image
         formData.append('th_image', threshold_image, 'image.png');
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image1.png');
+        formData.append('image', original_image_blob, 'image1.png');
         // Send configuration parameters
         formData.append('line_threshold', JSON.stringify(lineThreshold));
         formData.append('min_line_percent', JSON.stringify(lineMinLineLength));
@@ -157,7 +161,7 @@ document.getElementById("reviseButton").addEventListener('click', () => {
         let pad_size_x = parseInt(document.getElementById('pad_size_x').value);
         let pad_size_y = parseInt(document.getElementById('pad_size_y').value);
         // Send both the original image and the thresholded image
-        formData.append('image', dataURLtoBlob(canvas.toDataURL()), 'image.png');
+        formData.append('image', original_image_blob, 'image.png');
         formData.append('th_image', threshold_image, 'image1.png');
         // Send configuration parameters
         formData.append('pad_size_x', JSON.stringify(pad_size_x));
@@ -178,6 +182,17 @@ function fetch_img(formData, url) {
 
             const image = new Image();
             image.onload = function () {
+
+                const img_ration = image.width / image.height;
+                const max_percent = 0.5;
+                if (image.width > window.innerWidth * max_percent) {
+                    image.width = window.innerWidth * max_percent;
+                    image.height = image.width / img_ration;
+                }
+                else if (image.height > window.innerHeight * max_percent) {
+                    image.height = window.innerHeight * max_percent;
+                    image.width = image.height * img_ration;
+                }
                 canvasOut.width = image.width;
                 canvasOut.height = image.height;
                 ctxOut.drawImage(image, 0, 0, canvasOut.width, canvasOut.height);

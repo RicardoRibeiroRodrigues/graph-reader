@@ -9,7 +9,9 @@ import os
 
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
-    pytesseract.pytesseract.tesseract_cmd = r'tesseract'
+    # Find the path to the tesseract executable
+    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "/usr/local/lib/python3.9/site-packages")
+
 
 
 app = Flask(__name__)
@@ -111,8 +113,8 @@ def handdrawn_graph():
         "threshold": 100,
         "k": 5,
         "blur": 3,
-        "pad_size_x": 30,
-        "pad_size_y": 30,
+        "pad_size_x": 15,
+        "pad_size_y": 15,
     }
     return render_template('handdrawn.html', **default_configs)
 
@@ -190,7 +192,7 @@ def process_hand_graph_1():
 @app.route('/process-image-hand-2', methods=['POST'])
 def process_hand_graph_2():
     try:
-        pad_size_y = pad_size_x = 30
+        pad_size_y = pad_size_x = 15
         if 'pad_size_x' in request.form:
             pad_size_x = int(request.form['pad_size_x'])
         if 'pad_size_y' in request.form:
@@ -215,12 +217,14 @@ def process_hand_graph_2():
 @app.route('/process-image-hand-3', methods=['POST'])
 def process_hand_graph_3():
     try:
-        graph_type = 'line'
         img = request.files['image'].read()
         img = cv2_image_from_bytes(img)
+        plot_type = request.form['plotType']
+        # Remove the "" from the string
+        plot_type = plot_type[1:-1]
 
         handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(session['pipeline'])
-        csv = handdrawn_graph_pipeline.find_graph_points(img, graph_type)
+        csv = handdrawn_graph_pipeline.find_graph_points(img, plot_type)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
 
         response = make_response(csv)

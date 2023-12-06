@@ -67,6 +67,7 @@ class HandDrawnGraphPipeline:
         # Dilate
         kernel = np.ones((k, k), np.uint8)
         edges = cv2.dilate(edges, kernel, iterations=1)
+
         self.threshhold_config = {
             "threshold_value": threshold_value,
             "blur_amount": blur_amount,
@@ -117,7 +118,7 @@ class HandDrawnGraphPipeline:
                         continue
                     most_orthogonal_lines_angle = angl
                     most_orthogonal_lines_intersec = (x, y)
-                    cv2.circle(img, (x, y), 5, (0, 255, 255), -1)
+                    cv2.circle(img, (x, y), 15, (0, 255, 255), -1)
 
         if most_orthogonal_lines_intersec is None:
             print("Found no line intersections")
@@ -176,7 +177,7 @@ class HandDrawnGraphPipeline:
         max_x = max_y = 0
         # for point in new_bbox:
         for point in dest_points:
-            cv2.circle(corrected_image, (int(point[0]), int(point[1])), 5, (0, 0, 255), -1)
+            cv2.circle(corrected_image, (int(point[0]), int(point[1])), 15, (0, 0, 255), -1)
             min_x = int(min(min_x, point[0]))
             min_y = int(min(min_y, point[1]))
             max_x = int(max(max_x, point[0]))
@@ -201,47 +202,72 @@ class HandDrawnGraphPipeline:
         return cv2_image_to_bytes(corrected_image)
 
     def find_graph_points(self, img, graph_type: str):
-        if graph_type not in ["line", "bar"]:
+        print(f"Graph type: {graph_type}")
+        if graph_type not in ("line", "scatter"):
+            return None
+        
+        # Find the The thresholded image again, with corrected image.
+        res = self.threshold_image(img, **self.threshhold_config)
+        th = cv2_image_from_bytes(res, cv2.IMREAD_GRAYSCALE)
+        thresholded_crop = th[
+            self.found_bbox_padded[1] : self.found_bbox_padded[3],
+            self.found_bbox_padded[0] : self.found_bbox_padded[2],
+        ]
+
+        contours, _ = cv2.findContours(
+            thresholded_crop, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+        )
+        if len(contours) == 0:
+            print("Found no contours")
             return None
 
+        mask = np.zeros(th.shape, np.uint8)
         # If is a line plot, consider only the biggest line (using contour area)
         if graph_type == "line":
-            # Find the The thresholded image again, with corrected image.
-            res = self.threshold_image(img, **self.threshhold_config)
-            th = cv2_image_from_bytes(res, cv2.IMREAD_GRAYSCALE)
-            thresholded_crop = th[
-                self.found_bbox_padded[1] : self.found_bbox_padded[3],
-                self.found_bbox_padded[0] : self.found_bbox_padded[2],
-            ]
-
-            contours, _ = cv2.findContours(
-                thresholded_crop, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-            )
-            if len(contours) == 0:
-                return None
             biggest_contour = max(contours, key=cv2.contourArea)
             # Add the padding to the contour, so it is in the original position
             biggest_contour[:, :, 0] += self.found_bbox_padded[0]
             biggest_contour[:, :, 1] += self.found_bbox_padded[1]
             cv2.drawContours(img, [biggest_contour], 0, (0, 0, 255), 2)
+            cv2.drawContours(mask, [biggest_contour], 0, 255, -1)
             # Get the bounding box of the contour
-            x_rect, y_rect, w, h = cv2.boundingRect(biggest_contour)
-            cv2.rectangle(img, (x_rect, y_rect), (x_rect + w, y_rect + h), (255, 255, 0), 2)
-            # Crop the image to the bounding box
-            img_th = th[y_rect : y_rect + h, x_rect : x_rect + w]
+            # x_rect, y_rect, w, h = cv2.boundingRect(biggest_contour)
+            # cv2.rectangle(img, (x_rect, y_rect), (x_rect + w, y_rect + h), (255, 255, 0), 2)
+            # # Crop the image to the bounding box
+            # img_th = th[y_rect : y_rect + h, x_rect : x_rect + w]
+        elif graph_type == "scatter":
+            # If is a scatter plot, consider all the contours
+            avg_area = sum([cv2.contourArea(contour) for contour in contours]) / len(contours)
+            print("Average area: ", avg_area)
+            for contour in contours:
+                if cv2.contourArea(contour) > avg_area * 1.3:
+                    continue
+                # Add the padding to the contour, so it is in the original position
+                contour[:, :, 0] += self.found_bbox_padded[0]
+                contour[:, :, 1] += self.found_bbox_padded[1]
+                cv2.drawContours(img, [contour], 0, (0, 0, 255), 2)
+                cv2.drawContours(mask, [contour], 0, 255, -1)
 
+        if DEBUG:
+            mask_debug = mask.copy()
+            if (mask.shape > (1000, 1000)):
+                mask_debug = cv2.resize(mask_debug, (1000, 1000))
+            debug_image(mask_debug)
+        
         # Find the graph points as white pixels in the image
-        graph_points = np.where(img_th == 255)
+        graph_points = np.where(mask == 255)
         # Add the padding to the points, so they are in the original position
-        x_coords = graph_points[1] + x_rect
-        y_coords = graph_points[0] + y_rect
+        x_coords = graph_points[1]
+        y_coords = graph_points[0]
         # Sort both coordinates by x
         sorted_x_coords, sorted_y_coords = zip(
             *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
         )
-        unique_points = set()
+
+        unique_points = []
         for i in range(0, len(sorted_x_coords), 2):
-            unique_points.add(Point(sorted_x_coords[i] + x_rect, sorted_y_coords[i] + y_rect))
+            # print(sorted_y_coords[i])
+            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
 
         # # Remove duplicate x coordinates
         # unique_points = set()
@@ -261,9 +287,8 @@ class HandDrawnGraphPipeline:
         #         avg_y_position /= count_points
         #         unique_x_coords.append(x + x_rect)
         #         unique_y_coords.append(avg_y_position + y_rect)
-        sorted_points = sorted(unique_points, key=lambda point: point.x)
         str_points = []
-        for point in sorted_points:
+        for point in unique_points:
             x, y = self.normalize_point(img.shape, point.x, point.y)
             str_points.append(f"{x},{y}\n")
         

@@ -17,4 +17,4 @@ RUN pip install Flask opencv-python-headless pytesseract
 EXPOSE 5000
 
 # Run app.py when the container launches
-CMD ["python", "feature_bound.py"]
+CMD ["python", "main.py"]
