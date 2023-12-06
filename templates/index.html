@@ -1,48 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< Updated upstream
+    <title>Seleção de Área na Imagem</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/script.js"></script>
+=======
     <title>Graph Scanner</title>
-    <!-- Add any additional styles or link to external stylesheets here -->
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        header {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
         }
         #project-description {
-            margin-bottom: 20px;
+            margin: 20px;
+            text-align: center;
         }
         .button-container {
             display: flex;
-            gap: 10px;
+            justify-content: center;
+            margin: 20px;
         }
         .button {
-            padding: 10px;
-            font-size: 16px;
+            padding: 12px 20px;
+            font-size: 18px;
             text-decoration: none;
             color: #fff;
             background-color: #007BFF;
             border: none;
             cursor: pointer;
             border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .usage-instructions {
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+            margin-top: 40px;
+            text-align: center;
+        }
+        .instruction-section {
+            margin-bottom: 30px;
+        }
+        .instruction-section h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .instruction-section p {
+            font-size: 16px;
         }
     </style>
+>>>>>>> Stashed changes
 </head>
+
 <body>
-    <div id="project-description">
-        <h1>Your Project Name</h1>
-        <p>
-            Welcome to our project! This is a brief description of what our project is about.
-            Feel free to explore and learn more about the different paths available.
-        </p>
+<<<<<<< Updated upstream
+    <div class="container">
+        <input type="file" id="inputImage" accept="image/*">
+        <div class="canvas-container" >
+            <canvas id="canvas"></canvas>
+            <div class="buttons-container">
+                <button id="resetButton">Reset</button>
+                <button id="boundingBox1Button">Graph Bounding Box</button>
+                <button id="boundingBox2Button">Axis Y</button>
+                <button id="boundingBox3Button">Axis X</button>
+                <button id="sendButton">Send</button>
+            </div>
+        </div>
+        <canvas id="canvas-output"></canvas>
     </div>
 
+=======
+    <header>
+        <h1>Graph2csv</h1>
+        <p>
+            Welcome to our project! This project allows you to convert graphs into tables (CSV format), divided between synthetic and hand-drawn.</p>
+    </header>
+
     <div class="button-container">
-        <a href="/syntetic-graph" class="button">Syntetic Graph</a>
+        <a href="/syntetic-graph" class="button">Synthetic Graph</a>
         <a href="/handdrawn-graph" class="button">Handdrawn Graph</a>
     </div>
 
+    <div id="project-description">
+        <div class="usage-instructions">
+            <div class="instruction-section">
+                <h2>How to Use Synthetic Graph</h2>
+                <p>First, select the option above, synthetic graph. Then, upload the file using a button. When the graph appears, select the graph area, the X-axis, and the Y-axis by dragging the mouse. Finally, click on 'submit'.</p>
+            </div>
+
+            <div class="instruction-section">
+                <h2>How to Use Handdrawn Graph</h2>
+                <p>First, set the threshold, blur, and K. Then, select the graph and send it! It's simple!</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Add any additional content or scripts here -->
+>>>>>>> Stashed changes
 </body>
+
 </html>
+
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
