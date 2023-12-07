@@ -158,8 +158,8 @@ document.getElementById("reviseButton").addEventListener('click', () => {
         formData.append('max_line_gap', JSON.stringify(lineMaxLineGap));
         fetch_img(formData, '/process-image-hand-1');
     } else if (pipeline_stage == 3) {
-        let pad_size_x = parseInt(document.getElementById('pad_size_x').value);
-        let pad_size_y = parseInt(document.getElementById('pad_size_y').value);
+        let pad_size_x = parseFloat(document.getElementById('pad_size_x').value);
+        let pad_size_y = parseFloat(document.getElementById('pad_size_y').value);
         // Send both the original image and the thresholded image
         formData.append('image', original_image_blob, 'image.png');
         formData.append('th_image', threshold_image, 'image1.png');

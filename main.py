@@ -10,7 +10,7 @@ import os
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
     # Find the path to the tesseract executable
-    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "/usr/local/lib/python3.9/site-packages")
+    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "./tesseract")
 
 
 
@@ -113,8 +113,8 @@ def handdrawn_graph():
         "threshold": 100,
         "k": 5,
         "blur": 3,
-        "pad_size_x": 15,
-        "pad_size_y": 15,
+        "pad_size_x": .1,
+        "pad_size_y": .1,
     }
     return render_template('handdrawn.html', **default_configs)
 
@@ -192,11 +192,11 @@ def process_hand_graph_1():
 @app.route('/process-image-hand-2', methods=['POST'])
 def process_hand_graph_2():
     try:
-        pad_size_y = pad_size_x = 15
+        pad_size_y = pad_size_x = 0.1
         if 'pad_size_x' in request.form:
-            pad_size_x = int(request.form['pad_size_x'])
+            pad_size_x = float(request.form['pad_size_x'])
         if 'pad_size_y' in request.form:
-            pad_size_y = int(request.form['pad_size_y'])
+            pad_size_y = float(request.form['pad_size_y'])
         
         img = request.files['image'].read()
         img = cv2_image_from_bytes(img)
