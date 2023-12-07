@@ -43,16 +43,18 @@ class HandDrawnGraphPipeline:
         return pipeline
 
     
-    def normalize_point(self, shape, x, y):
+    def normalize_point(self, x, y):
         min_y = self.found_bbox[1]
         min_x = self.found_bbox[0]
+        max_y = self.found_bbox[3]
+        max_x = self.found_bbox[2]
         
         # Invert the y-coordinate before normalization
-        inverted_y = shape[0] - y
+        inverted_y = max_y - y
         
         # Normalize the coordinates
-        normalized_x = (x - min_x) / (self.found_bbox[2] - min_x)
-        normalized_y = (inverted_y - min_y) / (self.found_bbox[3] - min_y)
+        normalized_x = (x - min_x) / (max_x - min_x)
+        normalized_y = (inverted_y - min_y) / (max_y - min_y)
         return normalized_x, normalized_y
 
     def threshold_image(self, img, threshold_value=100, blur_amount=3, k=5):
@@ -128,7 +130,7 @@ class HandDrawnGraphPipeline:
         return cv2_image_to_bytes(img)
 
 
-    def find_handdrawn_bbox(self, img, thresholded, pad_size_x=30, pad_size_y=30) -> list:
+    def find_handdrawn_bbox(self, img, thresholded, pad_size_x_percent=0.15, pad_size_y_percent=0.15) -> list:
         original_img = img.copy()
         most_orthogonal_lines_intersec = self.lines_intersec
 
@@ -184,6 +186,8 @@ class HandDrawnGraphPipeline:
             max_y = int(max(max_y, point[1]))
 
         # Pad the bounding box to exclude the axis
+        pad_size_x = int((max_x - min_x) * pad_size_x_percent)
+        pad_size_y = int((max_y - min_y) * pad_size_y_percent)
         self.found_bbox_padded = (
             min_x + pad_size_x,
             min_y + pad_size_y,
@@ -198,7 +202,6 @@ class HandDrawnGraphPipeline:
             2,
         )
         self.found_bbox = (min_x, min_y, max_x, max_y)
-        self.corrected_image = corrected_image
         return cv2_image_to_bytes(corrected_image)
 
     def find_graph_points(self, img, graph_type: str):
@@ -240,7 +243,8 @@ class HandDrawnGraphPipeline:
             avg_area = sum([cv2.contourArea(contour) for contour in contours]) / len(contours)
             print("Average area: ", avg_area)
             for contour in contours:
-                if cv2.contourArea(contour) > avg_area * 1.3:
+                # Ignore contours that are too big (probably some part of the axis)
+                if cv2.contourArea(contour) > avg_area * 1.5:
                     continue
                 # Add the padding to the contour, so it is in the original position
                 contour[:, :, 0] += self.found_bbox_padded[0]
@@ -289,7 +293,7 @@ class HandDrawnGraphPipeline:
         #         unique_y_coords.append(avg_y_position + y_rect)
         str_points = []
         for point in unique_points:
-            x, y = self.normalize_point(img.shape, point.x, point.y)
+            x, y = self.normalize_point(point.x, point.y)
             str_points.append(f"{x},{y}\n")
         
         csv_str = "".join(str_points)
