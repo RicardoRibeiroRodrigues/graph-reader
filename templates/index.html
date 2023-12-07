@@ -1,48 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleção de Área na Imagem</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/script.js"></script>
     <title>Graph Scanner</title>
-    <!-- Add any additional styles or link to external stylesheets here -->
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+
         #project-description {
-            margin-bottom: 20px;
+            margin: 20px;
+            text-align: center;
         }
+
+        .teste {
+            text-align: center;
+            background-color: #007BFF;
+            color: #fff;
+            padding: 10px 20px;
+            font-family: Arial, Helvetica, sans-serif;
+            
+        }
+        .teste h1 {
+            margin: 0; /* Define a margem superior como zero para o título h1 */
+        }
+
         .button-container {
             display: flex;
-            gap: 10px;
+            justify-content: center;
+            margin: 20px;
         }
         .button {
-            padding: 10px;
-            font-size: 16px;
+            padding: 12px 20px;
+            font-size: 18px;
             text-decoration: none;
             color: #fff;
             background-color: #007BFF;
             border: none;
             cursor: pointer;
             border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .usage-instructions {
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+            text-align: center;
+            width: 90%;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            margin: 25px auto; /* Centraliza a seção horizontalmente e adiciona margem externa */
+        }
+
+        .instruction-section {
+            margin-bottom: 30px;
+            padding: 20px; /* Adicione preenchimento interno para espaçamento */
+        }
+
+        .instruction-section h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .instruction-section p {
+            font-size: 16px;
+            margin-bottom: 20px; /* Adicione margem na parte inferior do parágrafo */
         }
     </style>
 </head>
+
 <body>
-    <div id="project-description">
-        <h1>Your Project Name</h1>
+
+    <div class="teste">
+        <h1>Graph2csv</h1>
         <p>
-            Welcome to our project! This is a brief description of what our project is about.
-            Feel free to explore and learn more about the different paths available.
-        </p>
-    </div>
+            Welcome to our project! This project allows you 
+            to convert graphs into tables (CSV format), divided between synthetic and hand-drawn.</p>
+        </div>
 
     <div class="button-container">
-        <a href="/syntetic-graph" class="button">Syntetic Graph</a>
+        <a href="/syntetic-graph" class="button">Synthetic Graph</a>
         <a href="/handdrawn-graph" class="button">Handdrawn Graph</a>
+    </div>
+
+    <div id="project-description">
+        <div class="usage-instructions">
+            <div class="instruction-section">
+                <h2>How to Use Synthetic Graph</h2>
+                <p>First, select the option above, synthetic graph. Then, upload the file using a button. When the graph appears, select the graph area, the X-axis, and the Y-axis by dragging the mouse. Finally, click on 'submit'.</p>
+            </div>
+
+            <div class="instruction-section">
+                <h2>How to Use Handdrawn Graph</h2>
+                <p>First, set the threshold, blur, and K. Then, select the graph and send it! It's simple!</p>
+            </div>
+        </div>
     </div>
 
     <!-- Add any additional content or scripts here -->
 </body>
+
 </html>
+
