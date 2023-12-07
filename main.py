@@ -5,18 +5,18 @@ import numpy as np
 import json
 import pytesseract
 from hand_graph import HandDrawnGraphPipeline
-from syntetic_graph import SynteticGraphPipeline
 import os
 
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
     # Find the path to the tesseract executable
-    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "/usr/local/lib/python3.9/site-packages")
-
+    pytesseract.pytesseract.tesseract_cmd = os.environ.get(
+        'TESSERACT_PATH', "/usr/bin/tesseract")
 
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
 
 def extract_text(img) -> str:
     img = img.copy()
@@ -30,21 +30,25 @@ def extract_text(img) -> str:
     text = pytesseract.image_to_string(img, config='--psm 8')
     return text
 
+
 def detect_text(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Performing OTSU threshold
-    _, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+    _, thresh1 = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
 
     rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
 
     # Applying dilation on the threshold image
-    dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+    dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
 
     # Finding contours
-    contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(
+        dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     return contours
+
 
 def get_bounding_box(b_box_json):
     x_min = round(b_box_json['x_min'])
@@ -56,7 +60,6 @@ def get_bounding_box(b_box_json):
 
 def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     image = cv2_image_from_bytes(image_data)
-    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # Extract bounding box coordinates from JSON string
     box_graph = json.loads(b_box_graph)
@@ -72,11 +75,11 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
     axis_y = image[y_min:y_max, x_min:x_max]
 
-
     graph_contours = detect_text(graph)
     axis_x_contours = detect_text(axis_x)
     axis_y_contours = detect_text(axis_y)
 
+    th_graph = threshold_image(graph)
     # Draw contours
     cv2.drawContours(graph, graph_contours, -1, (0, 0, 255), 3)
 
@@ -91,19 +94,65 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
         x, y, w, h = cv2.boundingRect(contour)
         y_list.append(extract_text(axis_y[y:y+h, x:x+w]))
         cv2.rectangle(axis_y, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    print(x_list)
-    print(y_list)
+
+    white_points = np.column_stack(np.where(th_graph == 255)[::-1])
+    # normalize the curve with the points
+    normalized_points = normalize_point(white_points, graph)
+
+    # Draw the curve
+    highlight_img = highlight_graph(image, normalized_points)
+
     # Return the processed image as a base64 encoded string
-    return cv2_image_to_bytes(image)
+    return cv2_image_to_bytes(highlight_img)
+
+
+
+def draw_line(image, points, color, thickness=2):
+    for i in range(len(points) - 1):
+        pt1 = (int(points[i][1]), int(points[i][0]))
+        pt2 = (int(points[i + 1][1]), int(points[i + 1][0]))
+        cv2.line(image, pt1, pt2, color, thickness)
+
+
+def highlight_graph(image, curve_points):
+    highlighted_image = image.copy()
+
+    draw_line(highlighted_image, curve_points, (0, 0, 255), thickness=2)
+
+    return highlighted_image
+
+def normalize_point(points, image):
+    normalized_points = points.astype(float)
+    normalized_points /= image.shape[1]
+
+    return normalized_points
+
+def threshold_image(img, low_threshold=50, high_threshold=150, blur_amount=3, k=5):
+    # Convert to gray
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    gray = cv2.equalizeHist(gray)
+
+    # Apply Canny edge detection
+    edges = cv2.Canny(gray, low_threshold, high_threshold)
+
+    # Optionally apply dilation based on the characteristics of synthetic plots
+    if k > 1:
+        kernel = np.ones((k, k), np.uint8)
+        edges = cv2.dilate(edges, kernel, iterations=1)
+
+    return cv2_image_to_bytes(edges)
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 @app.route("/syntetic-graph")
 def syntetic_graph():
     return render_template('syntetic.html')
+
 
 @app.route("/handdrawn-graph")
 def handdrawn_graph():
@@ -125,39 +174,19 @@ def process_syntetic_graph():
     try:
         image_data = request.files['image'].read()
         image = cv2_image_from_bytes(image_data)
-
-        syntetic_graph_pipeline = SynteticGraphPipeline()
-        processed_image_data = syntetic_graph_pipeline.threshold_image(
-            image, low_threshold=50, high_threshold=150, k=5)
-
-        line_threshold = 60
-        min_line_percent = 0.25
-        max_line_gap = 3
-        # Processamento adicional: detecção de linhas
-        img_lines = syntetic_graph_pipeline.find_lines(
-            processed_image_data, image, line_threshold, min_line_percent, max_line_gap)
-
-        pad_size_y = pad_size_x = 15
-        # Processamento adicional: encontrar bounding box
-        img_bbox = syntetic_graph_pipeline.find_bbox(
-            img_lines, pad_size_x, pad_size_y)
-
-        plot_type = plot_type[1:-1]
-        # Processamento adicional: encontrar pontos do gráfico
-        csv_data = syntetic_graph_pipeline.find_graph_points(
-            img_bbox, plot_type)
-        session['pipeline'] = syntetic_graph_pipeline.toDict()
-
-        # Retorna o CSV com as coordenadas dos pontos do gráfico
-        response = make_response(csv_data)
-        response.headers['Content-Type'] = 'text/csv'
-        response.headers['Content-Disposition'] = 'attachment; filename=graph.csv'
+        width = request.form['width']
+        height = request.form['height']
+        graph_box = request.form['graphBox']
+        axis_x_box = request.form['axisXBox']
+        axis_y_box = request.form['axisYBox']
+        processed_image_data = process_image(
+            image_data, graph_box, axis_x_box, axis_y_box, width, height)
+        response = make_response(processed_image_data)
+        response.headers['Content-Type'] = 'image/png'
         return response
-
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)})
-
 
 
 @app.route('/process-image-hand', methods=['POST'])
@@ -176,7 +205,8 @@ def process_hand_graph():
             blur = int(request.form['blur'])
 
         handdrawn_graph_pipeline = HandDrawnGraphPipeline()
-        processed_image_data = handdrawn_graph_pipeline.threshold_image(image, threshold, blur, k)
+        processed_image_data = handdrawn_graph_pipeline.threshold_image(
+            image, threshold, blur, k)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
 
         response = make_response(processed_image_data)
@@ -185,6 +215,7 @@ def process_hand_graph():
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)})
+
 
 @app.route('/process-image-hand-1', methods=['POST'])
 def process_hand_graph_1():
@@ -204,8 +235,10 @@ def process_hand_graph_1():
         if 'max_line_gap' in request.form:
             max_line_gap = int(request.form['max_line_gap'])
 
-        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(session['pipeline'])
-        img = handdrawn_graph_pipeline.find_lines(th_img, img, line_theshold, min_line_percent, max_line_gap)
+        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(
+            session['pipeline'])
+        img = handdrawn_graph_pipeline.find_lines(
+            th_img, img, line_theshold, min_line_percent, max_line_gap)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
         response = make_response(img)
         response.headers['Content-Type'] = 'image/png'
@@ -213,6 +246,7 @@ def process_hand_graph_1():
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)})
+
 
 @app.route('/process-image-hand-2', methods=['POST'])
 def process_hand_graph_2():
@@ -228,8 +262,10 @@ def process_hand_graph_2():
         th_img = request.files['th_image'].read()
         th_img = cv2_image_from_bytes(th_img, cv2.IMREAD_GRAYSCALE)
 
-        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(session['pipeline'])
-        res = handdrawn_graph_pipeline.find_handdrawn_bbox(img, th_img, pad_size_x, pad_size_y)
+        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(
+            session['pipeline'])
+        res = handdrawn_graph_pipeline.find_handdrawn_bbox(
+            img, th_img, pad_size_x, pad_size_y)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
 
         response = make_response(res)
@@ -238,6 +274,7 @@ def process_hand_graph_2():
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)})
+
 
 @app.route('/process-image-hand-3', methods=['POST'])
 def process_hand_graph_3():
@@ -248,7 +285,8 @@ def process_hand_graph_3():
         # Remove the "" from the string
         plot_type = plot_type[1:-1]
 
-        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(session['pipeline'])
+        handdrawn_graph_pipeline = HandDrawnGraphPipeline.fromDict(
+            session['pipeline'])
         csv = handdrawn_graph_pipeline.find_graph_points(img, plot_type)
         session['pipeline'] = handdrawn_graph_pipeline.toDict()
 
