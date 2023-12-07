@@ -15,9 +15,9 @@ Graph2CSV is a tool designed to convert both synthetic and hand-drawn graphs int
 1. **Synthetic Graphs:**
    - Upload the synthetic graph image using the provided functionality.
    - Configure any specific settings or parameters if required.
-   - Click 'Convert' to obtain the CSV file with extracted data.
+   - Click 'Send' to obtain the CSV file with extracted data.
 
 2. **Hand-Drawn Graphs:**
    - Upload the hand-drawn graph image.
    - Adjust any necessary settings for threshold, blur, K values, etc.
-   - Click 'Process' to generate the corresponding CSV file.
+   - Click 'Send' to generate the corresponding CSV file.
