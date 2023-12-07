@@ -9,12 +9,6 @@
     <script defer src="/static/script.js"></script>
     <title>Graph Scanner</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-        }
 
         #project-description {
             margin: 20px;
@@ -26,8 +20,11 @@
             background-color: #007BFF;
             color: #fff;
             padding: 10px 20px;
-            border-radius: 5px;
-            margin-top: 20px;
+            font-family: Arial, Helvetica, sans-serif;
+            
+        }
+        .teste h1 {
+            margin: 0; /* Define a margem superior como zero para o título h1 */
         }
 
         .button-container {
@@ -50,21 +47,30 @@
         .button:hover {
             background-color: #0056b3;
         }
+
         .usage-instructions {
             background-color: #f5f5f5;
             padding: 40px 20px;
-            margin-top: 40px;
             text-align: center;
+            width: 90%;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            margin: 25px auto; /* Centraliza a seção horizontalmente e adiciona margem externa */
         }
+
         .instruction-section {
             margin-bottom: 30px;
+            padding: 20px; /* Adicione preenchimento interno para espaçamento */
         }
+
         .instruction-section h2 {
             font-size: 24px;
             margin-bottom: 15px;
         }
+
         .instruction-section p {
             font-size: 16px;
+            margin-bottom: 20px; /* Adicione margem na parte inferior do parágrafo */
         }
     </style>
 </head>

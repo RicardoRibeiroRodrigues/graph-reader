@@ -13,16 +13,15 @@
 <body>
     {% include 'config_tab.html' %}
     {% include 'header.html' %}
-    <span id="openConfig" style="font-size:30px;cursor:pointer" onclick="openNav()">☰ Open Configuration</span>
+    <span id="openConfig" style="font-size:25px; cursor:pointer; position: absolute; left: 20px; top: 25%; transform: translateY(-50%);" onclick="openNav()">☰ Open Configuration</span>
 
     <div id="main">
         <div class="container">
             <div class="input-container">
                 <input type="file" id="inputImage" accept="image/*">
 
-                 <!-- Add a selection input for plot type -->
-                <label for="plotType">Select Plot Type:</label>
-                <select id="plotType">
+                <label for="plotType" class="plot-label">Select Plot Type:</label>
+                <select id="plotType" class="plot-select">
                     <option value="line">Line Plot</option>
                     <option value="scatter">Scatter Plot</option>
                 </select>
