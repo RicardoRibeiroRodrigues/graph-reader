@@ -1,3 +1,11 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    height: 100%;
+}
+
+
 #selectedArea {
     border: 2px dashed red;
     position: absolute;
@@ -66,7 +74,8 @@ header {
     font-size: 24px;
     font-weight: bold;
     text-align: center;
-    margin: 0 10px 0 420px; /* Centralizar o título */
+    margin: 0 auto;; /* Define as margens esquerda e direita como "auto" para centralizar */
+    width: fit-content; /* Ajusta a largura do elemento ao conteúdo */
 }
 
 .home-button {
@@ -139,12 +148,17 @@ header {
     background: linear-gradient(to right, #34C759, #007BFF); /* Gradient on Hover */
 }
 
-.config-container {
+
+.config-container > * {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-content: center;
     margin: 0 10px;
+}
+
+.config-container h2 {
+    margin-bottom: 50px; /* Define a margem superior como zero para o título h1 */
 }
 
 .number-input {
@@ -161,5 +175,37 @@ header {
 .input-label {
     font-size: 1.6rem;
     font-weight: bold;
+}
+
+/* Estilização para o rótulo */
+.plot-label {
+    margin-left: 20px; /* Adiciona espaço na parte inferior */
+    /* Outros estilos conforme necessário */
+    display: inline; /* Defina o display como inline */
+
+}
+
+/* Estilização para o select */
+.plot-select {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    width: 100%; /* Define a largura do select */
+    max-width: 200px; /* Define a largura máxima do select */
+    /* Estilos para indicador/drop-down arrow */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23000000"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+}
+
+/* Estilização quando o select estiver em foco */
+.plot-select:focus {
+    outline: none;
+    box-shadow: 0 0 5px rgba(81, 203, 238, 1); /* Adicione um efeito de sombra quando estiver em foco */
 }
 
