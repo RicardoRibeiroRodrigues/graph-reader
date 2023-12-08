@@ -118,3 +118,14 @@ def ransac(points) -> tuple:
                 best_slope = slope
                 best_intercept = intercept
     return best_slope, best_intercept, best_inliers
+
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __hash__(self):
+        """
+        Hash the point using the x coordinate to allow the x coordinate to be unique
+        """
+        return hash(self.x)

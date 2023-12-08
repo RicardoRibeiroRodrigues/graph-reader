@@ -124,28 +124,26 @@ def handdrawn_graph():
 def process_syntetic_graph():
     try:
         image_data = request.files['image'].read()
+        graph_box = request.form['graphBox']
+        axis_x_box = request.form['axisXBox']
+        axis_y_box = request.form['axisYBox']
+        
+        graph_box = get_bounding_box(json.loads(graph_box))
         image = cv2_image_from_bytes(image_data)
 
-        syntetic_graph_pipeline = SynteticGraphPipeline()
-        processed_image_data = syntetic_graph_pipeline.threshold_image(
-            image, low_threshold=50, high_threshold=150, k=5)
+        syntetic_graph_pipeline = SynteticGraphPipeline(graph_box, 10, 50, 10, 100)
+        syntetic_graph_pipeline.threshold_image(
+            image, low_threshold=50, high_threshold=150, k=5
+        )
 
-        line_threshold = 60
-        min_line_percent = 0.25
-        max_line_gap = 3
-        # Processamento adicional: detecção de linhas
-        img_lines = syntetic_graph_pipeline.find_lines(
-            processed_image_data, image, line_threshold, min_line_percent, max_line_gap)
-
-        pad_size_y = pad_size_x = 15
-        # Processamento adicional: encontrar bounding box
-        img_bbox = syntetic_graph_pipeline.find_bbox(
-            img_lines, pad_size_x, pad_size_y)
-
+        plot_type = request.form['plotType']
+        # Remove the "" from the string
         plot_type = plot_type[1:-1]
+    
         # Processamento adicional: encontrar pontos do gráfico
         csv_data = syntetic_graph_pipeline.find_graph_points(
-            img_bbox, plot_type)
+            image.copy(), plot_type
+        )
         session['pipeline'] = syntetic_graph_pipeline.toDict()
 
         # Retorna o CSV com as coordenadas dos pontos do gráfico
