@@ -63,32 +63,6 @@ def perspective_removal(image, source_points, destination_points):
     return corrected_image, warped_point[0]
 
 
-def get_graph_data_norm(img, bbox) -> list:
-    x_min, y_min, x_max, y_max = bbox
-    graph = img[y_min:y_max, x_min:x_max]
-    graph = cv2.cvtColor(graph, cv2.COLOR_BGR2GRAY)
-
-    blur = cv2.GaussianBlur(graph, (11, 11), 0)
-    # Performing OTSU threshold
-    _, thresh1 = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
-    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
-    # Applying dilation on the threshold image
-    dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
-
-    graph_points = []
-
-    # Loop points of theshold image
-    white_points = np.where(dilation == 255)
-    x_points, y_points = white_points[1], white_points[0]
-    # Map x_points and y_points and normalize them
-    x_points = (x_points - x_min) / (x_max - x_min)
-    y_points = (y_points - y_min) / (y_max - y_min)
-    for x, y in zip(x_points, y_points):
-        graph_points.append((x, y))
-
-    return graph_points
-
-
 def ransac(points) -> tuple:
     # RANSAC parameters
     threshold = 0.1
@@ -118,6 +92,13 @@ def ransac(points) -> tuple:
                 best_slope = slope
                 best_intercept = intercept
     return best_slope, best_intercept, best_inliers
+
+def get_bounding_box(b_box_json):
+    x_min = round(b_box_json['x_min'])
+    y_min = round(b_box_json['y_min'])
+    x_max = x_min + round(b_box_json['width'])
+    y_max = y_min + round(b_box_json['height'])
+    return x_min, y_min, x_max, y_max
 
 class Point:
     def __init__(self, x, y):
