@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 from utils import *
 import os
-import json
 import pytesseract
 import re
 
@@ -33,12 +32,10 @@ class SynteticGraphPipeline:
         max_x = self.labels_bounding_box[2]
         max_y = self.labels_bounding_box[3]
 
-        # Invert the y-coordinate before normalization
-        inverted_y = max_y - y
-
         # Normalize the coordinates
         normalized_x = (x - min_x) / (max_x - min_x)
-        normalized_y = (inverted_y - min_y) / (max_y - min_y)
+        normalized_y = (y - min_y) / (max_y - min_y)
+        normalized_y = 1 - normalized_y
         return normalized_x, normalized_y
 
     def threshold_image(self, img, low_threshold=50, high_threshold=150, k=5):
@@ -102,11 +99,11 @@ class SynteticGraphPipeline:
         x_min, y_min, x_max, y_max = get_bounding_box(b_box_graph)
         graph = image[y_min:y_max, x_min:x_max]
 
-        x_min, y_min, x_max, y_max = get_bounding_box(b_box_x)
-        axis_x = image[y_min:y_max, x_min:x_max]
+        x_min_axx, y_min, x_max, y_max = get_bounding_box(b_box_x)
+        axis_x = image[y_min:y_max, x_min_axx:x_max]
 
-        x_min, y_min, x_max, y_max = get_bounding_box(b_box_y)
-        axis_y = image[y_min:y_max, x_min:x_max]
+        x_min_axy, y_min_axy, x_max, y_max = get_bounding_box(b_box_y)
+        axis_y = image[y_min_axy:y_max, x_min_axy:x_max]
 
         graph_contours = self.detect_contours(graph)
         axis_x_contours, text_x = self.detect_text(axis_x, "x")
@@ -130,6 +127,8 @@ class SynteticGraphPipeline:
         # processed_text_y = np.linspace(
         #     processed_text_y[0], processed_text_y[-1], len(axis_y_contours)
         # )
+        processed_text_x = sorted(processed_text_x)
+        processed_text_y = sorted(processed_text_y)
 
         print("After uniform")
         print(processed_text_x)
@@ -145,6 +144,7 @@ class SynteticGraphPipeline:
         for contour in axis_x_contours:
             x, y, w, h = cv2.boundingRect(contour)
             bound_middle_x = x + w / 2
+            bound_middle_x += x_min_axx
             min_x = min(min_x, bound_middle_x)
             max_x = max(max_x, bound_middle_x)
 
@@ -165,6 +165,7 @@ class SynteticGraphPipeline:
         for contour in axis_y_contours:
             x, y, w, h = cv2.boundingRect(contour)
             bound_middle_y = y + h / 2
+            bound_middle_y += y_min_axy
             min_y = min(min_y, bound_middle_y)
             max_y = max(max_y, bound_middle_y)
 
@@ -181,15 +182,26 @@ class SynteticGraphPipeline:
                 j += 1
             cv2.rectangle(axis_y, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        debug_image(image)
         self.labels_bounding_box = (min_x, min_y, max_x, max_y)
+        if DEBUG:
+            # Draw bounding box
+            cv2.circle(image, (int(min_x), int(max_y)), 5, (255, 255, 0), -1)
+            cv2.circle(image, (int(max_x), int(min_y)), 5, (255, 255, 0), -1)
+            # Mark on the image the bounding box of the graph
+            debug_image(image)
         self.max_x_value = max(processed_text_x)
         self.min_x_value = min(processed_text_x)
         self.max_y_value = max(processed_text_y)
         self.min_y_value = min(processed_text_y)
+        print(f"Min x: {self.min_x_value}, Max x: {self.max_x_value}")
+        print(f"Min y: {self.min_y_value}, Max y: {self.max_y_value}")
 
     def detect_text(self, img, var):
         lista_dados = []
+        original_dim = img.shape[:2]
+        # Scale img to 300 dpi
+        img = cv2.resize(img, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Performing OTSU threshold
@@ -206,39 +218,50 @@ class SynteticGraphPipeline:
         contours, _ = cv2.findContours(
             dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
         )
-        # Scale img to 300 dpi
-        img = cv2.resize(img, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
 
         if var == "x":
-            altura_x, largura_x, _ = img.shape
-            custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-            if altura_x < 30:
-                res_x = cv2.resize(
-                    img, (largura_x + 20, altura_x + 20), interpolation=cv2.INTER_CUBIC
-                )
-                debug_image(res_x)
-                extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
-            else:
-                debug_image(img)
-                extracted_text = pytesseract.image_to_string(img, config=custom_config)
+            custom_config = r"--psm 8 -c tessedit_char_whitelist=0123456789.-ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                if w < 30:
+                    copy_img = img.copy()
+                    res_x = cv2.resize(
+                        copy_img[y : y + h, x : x + w], (w + 20, h + 20), interpolation=cv2.INTER_CUBIC
+                    )
+                    extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
+                else:
+                    extracted_text = pytesseract.image_to_string(img[y : y + h, x : x + w], config=custom_config)
+                lista_dados.append(extracted_text)
+            # Abordagem anterior.
+            # altura_x, largura_x, _ = img.shape
+            # if altura_x < 30:
+            #     res_x = cv2.resize(
+            #         img, (largura_x + 20, altura_x + 20), interpolation=cv2.INTER_CUBIC
+            #     )
+            #     debug_image(res_x)
+            #     extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
+            # else:
+            #     debug_image(img)
+            #     extracted_text = pytesseract.image_to_string(img, config=custom_config)
 
-            lista_dados.append(extracted_text)
+            # lista_dados.append(extracted_text)
 
         if var == "y":
             custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
             altura_y, largura_y, _ = img.shape
             if largura_y < 35:
                 res_y = cv2.resize(img, (largura_y + 20, altura_y + 20))
-                debug_image(res_y)
                 extracted_text = pytesseract.image_to_string(
                     res_y, config=custom_config
                 )
             else:
-                debug_image(img)
                 extracted_text = pytesseract.image_to_string(img, config=custom_config)
 
             lista_dados.append(extracted_text)
 
+        # Transform the countours to the original image dimensions
+        dim_diff = np.array(original_dim) / np.array(img.shape[:2])
+        contours = [np.array(contour * dim_diff, dtype=np.int32) for contour in contours]
         return contours, lista_dados
 
     def find_graph_points(self, graph_type: str):
@@ -265,14 +288,14 @@ class SynteticGraphPipeline:
         if graph_type == "line":
             biggest_contour = max(contours, key=cv2.contourArea)
             # Add the padding to the contour, so it is in the original position
-            biggest_contour[:, :, 0] += self.graph_bounding_box[0]
-            biggest_contour[:, :, 1] += self.graph_bounding_box[1]
+            biggest_contour[:, :, 0] += x_min
+            biggest_contour[:, :, 1] += y_min
             cv2.drawContours(mask, [biggest_contour], 0, 255, -1)
         elif graph_type == "scatter":
             for contour in contours:
                 # Add the padding to the contour, so it is in the original position
-                contour[:, :, 0] += self.graph_bounding_box[0]
-                contour[:, :, 1] += self.graph_bounding_box[1]
+                contour[:, :, 0] += x_min
+                contour[:, :, 1] += y_min
                 cv2.drawContours(mask, [contour], 0, 255, -1)
 
         if DEBUG:
@@ -290,10 +313,20 @@ class SynteticGraphPipeline:
         sorted_x_coords, sorted_y_coords = zip(
             *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
         )
+        
+        x_array = np.array(sorted_x_coords)
+        y_array = np.array(sorted_y_coords)
+
+        # Find unique x values and calculate the mean y for each unique x
+        unique_x, mean_y = np.unique(x_array, return_inverse=True)
+        mean_y = np.bincount(mean_y, weights=y_array) / np.bincount(mean_y)
+
+        print(f"Unique x: {unique_x.shape}")
+        print(f"Mean y: {mean_y.shape}")
 
         unique_points = []
-        for i in range(0, len(sorted_x_coords), 2):
-            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
+        for x, y in zip(unique_x, mean_y):
+            unique_points.append(Point(x, y))
 
         str_points = []
         # Calculate the multipliers for the normalized coordinates to the graph labels interval
@@ -301,7 +334,9 @@ class SynteticGraphPipeline:
         y_multiplier = self.max_y_value - self.min_y_value
 
         for point in unique_points:
+            print(point.x, point.y)
             x, y = self.normalize_point(point.x, point.y)
+            print(x, y)
             # Translate the normalized coordinates to the graph labels interval
             x = self.min_x_value + x * x_multiplier
             y = self.min_y_value + y * y_multiplier
