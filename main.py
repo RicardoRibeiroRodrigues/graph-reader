@@ -7,12 +7,13 @@ import pytesseract
 from hand_graph import HandDrawnGraphPipeline
 from syntetic_graph import SynteticGraphPipeline
 import os
-import re
+from dotenv import load_dotenv
 
+load_dotenv()
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
     # Find the path to the tesseract executable
-    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "./tesseract")
+    pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_PATH', "./tesseract")
 
 
 
