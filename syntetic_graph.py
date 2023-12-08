@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from utils import *
 import os
+import json
+import pytesseract
+from collections import defaultdict
 
 DEBUG = os.environ.get("DEBUG", False)
 
@@ -68,83 +71,80 @@ class SynteticGraphPipeline:
         self.thresholded_image = edges
         return cv2_image_to_bytes(edges)
 
-    def find_graph_points(self, img, graph_type: str):
-        print(f"Graph type: {graph_type}")
-        if graph_type not in ("line", "scatter"):
-            return None
+    def get_bounding_box(b_box_json):
+        x_min = round(b_box_json['x_min'])
+        y_min = round(b_box_json['y_min'])
+        x_max = x_min + round(b_box_json['width'])
+        y_max = y_min + round(b_box_json['height'])
+        return x_min, y_min, x_max, y_max
+         
 
-        # Find the The thresholded image again, with corrected image.
-        # Format x_min, y_min, x_max, y_max
-        x_min = self.graph_bounding_box[0]
-        y_min = self.graph_bounding_box[1]
-        x_max = self.graph_bounding_box[2]
-        y_max = self.graph_bounding_box[3]
-        thresholded_crop = self.thresholded_image[
-            y_min:y_max, x_min:x_max
-        ]
-            
+    def detect_text(img, var):
+        lista_dados = []
+        graph_points = None
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+        # Performing OTSU threshold
+        _, thresh1 = cv2.threshold(
+            gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+
+        # Applying dilation on the threshold image
+        dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
+
+        # Finding contours
         contours, _ = cv2.findContours(
+            dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        # Redução de ruído e aumento de contraste
+
+        thr = cv2.adaptiveThreshold(gray, 255,
+                                    cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
+
+        if var == 'x':
+            altura_x, largura_x, canais_x = img.shape
+            print(altura_x)
+            if altura_x < 30:
+                res_x = cv2.resize(img, (largura_x+20, altura_x+20),
+                                  interpolation=cv2.INTER_CUBIC)
+                extracted_text = pytesseract.image_to_string(
+                    res_x, config='--psm 6')
+            else:
+                extracted_text = pytesseract.image_to_string(img, config='--psm 6')
+
+            lista_dados.append(extracted_text)
+
+        if var == 'y':
+            custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
+            altura_y, largura_y, canais_y = img.shape
+            if largura_y < 35:
+                res_y = cv2.resize(img, (largura_y+20, altura_y+20))
+                extracted_text = pytesseract.image_to_string(
+                    res_y, config=custom_config)
+            else:
+                extracted_text = pytesseract.image_to_string(
+                    img, config=custom_config)
+
+            lista_dados.append(extracted_text)
+
+        if var == "grafico":
+            # Dicionário para armazenar os pontos do gráfico por coordenada x
+            graph_points = defaultdict(list)
+
+            # Percorre a imagem para encontrar os pontos não brancos
+            for y in range(thr.shape[0]):
+                for x in range(thr.shape[1]):
+                    pixel_value = thr[y, x]
+                    if pixel_value < 255:  # Se o pixel não for branco
+                        # Armazena o valor y para a coordenada x
+                        graph_points[x].append(-y)
+
+            # Calcula a média dos valores de y para cada coordenada x
+            for x, y_values in graph_points.items():
+                graph_points[x] = float(np.mean(y_values))
+
+        return contours, lista_dados, graph_points
             thresholded_crop, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
         )
-        if len(contours) == 0:
-            print("Found no contours")
-            return None
-
-        mask = np.zeros(self.thresholded_image.shape, np.uint8)
-        if graph_type == "line":
-            biggest_contour = max(contours, key=cv2.contourArea)
-            # Add the padding to the contour, so it is in the original position
-            biggest_contour[:, :, 0] += self.graph_bounding_box[0]
-            biggest_contour[:, :, 1] += self.graph_bounding_box[1]
-            cv2.drawContours(mask, [biggest_contour], 0, 255, -1)
-        elif graph_type == "scatter":
-            for contour in contours:
-                # Add the padding to the contour, so it is in the original position
-                contour[:, :, 0] += self.graph_bounding_box[0]
-                contour[:, :, 1] += self.graph_bounding_box[1]
-                cv2.drawContours(mask, [contour], 0, 255, -1)
-
-        if DEBUG:
-            mask_debug = mask.copy()
-            if (mask.shape > (1000, 1000)):
-                mask_debug = cv2.resize(mask_debug, (1000, 1000))
-            debug_image(mask_debug)
-
-        # Find the graph points as white pixels in the image
-        graph_points = np.where(mask == 255)
-        # Add the padding to the points, so they are in the original position
-        x_coords = graph_points[1]
-        y_coords = graph_points[0]
-        # Sort both coordinates by x
-        sorted_x_coords, sorted_y_coords = zip(
-            *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
-        )
-
-        unique_points = []
-        for i in range(0, len(sorted_x_coords), 2):
-            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
         
-        str_points = []
-        x_min = self.graph_bounding_box[0]
-        y_min = self.graph_bounding_box[1]
-        x_max = self.graph_bounding_box[2]
-        y_max = self.graph_bounding_box[3]
-        # Calculate the multipliers for the normalized coordinates to the graph labels interval
-        x_multiplier = (self.max_x_value - self.min_x_value) 
-        y_multiplier = (self.max_y_value - self.min_y_value)
-
-        for point in unique_points:
-            x, y = self.normalize_point(point.x, point.y)
-            # Translate the normalized coordinates to the graph labels interval
-            x = self.min_x_value + x * x_multiplier
-            y = self.min_y_value + y * y_multiplier
-            str_points.append(f"{x},{y}\n")
-
-        csv_str = "".join(str_points)
-        # DEBUG
-        if DEBUG:
-            with open("out.csv", 'w') as f:
-                f.write(csv_str)
-
-        return csv_str.encode("utf-8")
