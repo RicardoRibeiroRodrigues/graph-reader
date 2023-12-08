@@ -112,10 +112,6 @@ class SynteticGraphPipeline:
         processed_text_x = self.process_detected_text(text_x)
         processed_text_y = self.process_detected_text(text_y)
 
-        print("Before uniform")
-        print(processed_text_x)
-        print(processed_text_y)
-
         # invert the order of axis_y_contours and axis_x_contours
         axis_x_contours = axis_x_contours[::-1]
         axis_y_contours = axis_y_contours[::-1]
@@ -130,9 +126,10 @@ class SynteticGraphPipeline:
         processed_text_x = sorted(processed_text_x)
         processed_text_y = sorted(processed_text_y)
 
-        print("After uniform")
-        print(processed_text_x)
-        print(processed_text_y)
+        if DEBUG:
+            print("After uniform")
+            print(processed_text_x)
+            print(processed_text_y)
 
         # Draw contours
         cv2.drawContours(graph, graph_contours, -1, (0, 0, 255), 3)
@@ -193,8 +190,9 @@ class SynteticGraphPipeline:
         self.min_x_value = min(processed_text_x)
         self.max_y_value = max(processed_text_y)
         self.min_y_value = min(processed_text_y)
-        print(f"Min x: {self.min_x_value}, Max x: {self.max_x_value}")
-        print(f"Min y: {self.min_y_value}, Max y: {self.max_y_value}")
+        if DEBUG:
+            print(f"Min x: {self.min_x_value}, Max x: {self.max_x_value}")
+            print(f"Min y: {self.min_y_value}, Max y: {self.max_y_value}")
 
     def detect_text(self, img, var):
         lista_dados = []
@@ -265,7 +263,6 @@ class SynteticGraphPipeline:
         return contours, lista_dados
 
     def find_graph_points(self, graph_type: str):
-        print(f"Graph type: {graph_type}")
         if graph_type not in ("line", "scatter"):
             return None
 
@@ -334,9 +331,7 @@ class SynteticGraphPipeline:
         y_multiplier = self.max_y_value - self.min_y_value
 
         for point in unique_points:
-            print(point.x, point.y)
             x, y = self.normalize_point(point.x, point.y)
-            print(x, y)
             # Translate the normalized coordinates to the graph labels interval
             x = self.min_x_value + x * x_multiplier
             y = self.min_y_value + y * y_multiplier
