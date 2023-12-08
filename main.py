@@ -6,6 +6,7 @@ import json
 import pytesseract
 from hand_graph import HandDrawnGraphPipeline
 import os
+import re
 
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
@@ -31,7 +32,7 @@ def extract_text(img) -> str:
     return text
 
 
-def detect_text(img):
+def detect_contours(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Performing OTSU threshold
@@ -75,23 +76,50 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     x_min, y_min, x_max, y_max = get_bounding_box(box_axis_y)
     axis_y = image[y_min:y_max, x_min:x_max]
 
-    graph_contours = detect_text(graph)
-    axis_x_contours = detect_text(axis_x)
-    axis_y_contours = detect_text(axis_y)
+    graph_contours = detect_contours(graph)
+    axis_x_contours, text_x = detect_text(axis_x, 'x')
+    axis_y_contours, text_y = detect_text(axis_y, 'y')
+
+    processed_text_x = process_detected_text(text_x)
+    processed_text_y = process_detected_text(text_y)
+
+    print(processed_text_x)
+    print(processed_text_y)
+
+    # invert the order of axis_y_contours and axis_x_contours
+    axis_x_contours = axis_x_contours[::-1]
+    axis_y_contours = axis_y_contours[::-1]
+
+    # Assume uniform spacing between the points in the graph
+    processed_text_x = np.linspace(
+        processed_text_x[0], processed_text_x[-1], len(axis_x_contours))
+    processed_text_y = np.linspace(
+        processed_text_y[0], processed_text_y[-1], len(axis_y_contours))
 
     th_graph = threshold_image(graph)
     # Draw contours
     cv2.drawContours(graph, graph_contours, -1, (0, 0, 255), 3)
 
     x_list = []
+    i = 0
+    j = 0
+
     for contour in axis_x_contours:
         x, y, w, h = cv2.boundingRect(contour)
+        if i < len(processed_text_x):
+            cv2.putText(axis_x, str(processed_text_x[i]), (x+30, y+13),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            i += 1
         # x_list.append(extract_text(axis_x[y:y+h, x:x+w]))
         cv2.rectangle(axis_x, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     y_list = []
     for contour in axis_y_contours:
         x, y, w, h = cv2.boundingRect(contour)
+        if j < len(processed_text_y):
+            cv2.putText(axis_y, str(processed_text_y[j]), (x, y-10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            j += 1
         y_list.append(extract_text(axis_y[y:y+h, x:x+w]))
         cv2.rectangle(axis_y, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
@@ -102,10 +130,75 @@ def process_image(image_data, b_box_graph, b_box_x, b_box_y, width, height):
     # Draw the curve
     highlight_img = highlight_graph(image, normalized_points)
 
+
     # Return the processed image as a base64 encoded string
     return cv2_image_to_bytes(highlight_img)
 
 
+def process_detected_text(text_list):
+    processed_list = []
+
+    for text in text_list:
+        # Utilize expressão regular para capturar números decimais
+        numbers = re.findall(r"[-+]?\d*\.\d+|[-+]?\d+", text)
+        # Converta para float se forem números decimais
+        numbers = [float(num) for num in numbers]
+
+        for i in range(len(numbers)):
+            processed_list.append(numbers[i])
+
+    return processed_list
+
+
+def detect_text(img, type):
+    lista_dados = []
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Performing OTSU threshold
+    _, thresh1 = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+
+    # Applying dilation on the threshold image
+    dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
+
+    # Finding contours
+    contours, _ = cv2.findContours(
+        dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    # Redução de ruído e aumento de contraste
+
+    thr = cv2.adaptiveThreshold(gray, 255,
+                                cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 23)
+
+    if type == 'x':
+        altura_x, largura_x, canais_x = img.shape
+        print(altura_x)
+        if altura_x < 30:
+            res_x = cv2.resize(img, (largura_x+20, altura_x+20),
+                               interpolation=cv2.INTER_CUBIC)
+            extracted_text = pytesseract.image_to_string(
+                res_x, config='--psm 6')
+        else:
+            extracted_text = pytesseract.image_to_string(img, config='--psm 6')
+
+        lista_dados.append(extracted_text)
+
+    if type == 'y':
+        custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"
+        altura_y, largura_y, canais_y = img.shape
+        if largura_y < 35:
+            res_y = cv2.resize(img, (largura_y+20, altura_y+20))
+            extracted_text = pytesseract.image_to_string(
+                res_y, config=custom_config)
+        else:
+            extracted_text = pytesseract.image_to_string(
+                img, config=custom_config)
+
+        lista_dados.append(extracted_text)
+
+    return contours, lista_dados
 
 def draw_line(image, points, color, thickness=2):
     for i in range(len(points) - 1):
