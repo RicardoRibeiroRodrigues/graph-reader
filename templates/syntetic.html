@@ -10,11 +10,9 @@
     <style>
         /* Estilos */
         #graph-info {
-            float: left;
-            width: 40%; /* Aumentando a largura para ocupar mais espaço horizontalmente */
-            margin-top: 40px; /* Espaçamento do texto em relação ao topo */
-            margin-left: 0px; /* Margem à esquerda para separar o texto do bloco de canvas */
-            padding: 20px; /* Adicionando padding interno */
+            width: 80%; /* Define a largura para cobrir 80% da largura total */
+            margin: 40px auto; /* Centraliza na horizontal e define margem superior */
+            padding: 20px; /* Adiciona padding interno */
             background-color: #f2f2f2; /* Fundo cinza */
             border-radius: 5px; /* Cantos arredondados */
             max-height: 170px; /* Altura máxima do contêiner */
@@ -28,25 +26,31 @@
 
         #main {
             display: flex;
+            justify-content: center; /* Centraliza conteúdo na horizontal */
         }
 
         .container {
             width: 50%; /* Ajustando a largura da parte principal */
             margin-left: 10px; /* Adicionando uma margem à esquerda */
+            display: flex; /* Usando flexbox */
+            justify-content: center; /* Centraliza conteúdo na horizontal */
+            align-items: center; /* Centraliza conteúdo na vertical */
         }
     </style>
 </head>
 <body>
     {% include 'header.html' %}
-    <div id="sidebar">
-        <a href="javascript:void(0)" class="closebtn" onclick="toggleSidebar()">&times;</a>
-        <a href="#">Option 1</a>
-        <a href="#">Option 2</a>
-        <a href="#">Option 3</a>
+
+    <!-- Adicionando texto informativo centralizado e mais largo -->
+    <div id="graph-info">
+        <h2>Synthetic Graph Selection</h2>
+        <p>Here you can select the bounding box of the graph (Line Plot or Scatter Plot), the Y-axis, and the X-axis. Utilize the provided buttons to accurately select and extract the necessary information from the graph. Remember to check the results, if it was not good, try again.</p>
     </div>
 
+    <!-- Divisão principal para o conteúdo gráfico -->
     <div id="main">
         <div class="container">
+            <!-- Conteúdo para seleção de gráficos -->
             <div class="input-container">
                 <input type="file" id="inputImage" accept="image/*">
             </div>
@@ -63,17 +67,14 @@
             <p id="axisCheckText">Check if the areas were correctly selected...</p>
             <canvas id="canvas-output"></canvas>
         </div>
-
-        <!-- Adicionando texto alinhado à esquerda da tela -->
-        <div id="graph-info">
-            <h2>Synthetic Graph Selection</h2>
-            <p>Here you can select the bounding box of the graph, the Y-axis, and the X-axis. Utilize the provided buttons to accurately select and extract the necessary information from the graph. Remeber to check the 
-                results, if it was not good, try again.
-            </p>
-        </div>
     </div>
+
+    <!-- ... (seu restante de código HTML permanece inalterado) ... -->
 </body>
 </html>
+
+
+
 
 
 
