@@ -35,6 +35,7 @@
             background-color: #007BFF; /* Adiciona fundo azul */
             color: white; /* Define a cor do texto como branco */
             border-radius: 5px; /* Adiciona cantos arredondados */
+            border: 2px solid #ccc;
         }
 
         #graph-info {
@@ -46,6 +47,7 @@
             overflow-y: auto; /* Adicionar barra de rolagem caso o conteúdo ultrapasse a altura máxima */
             text-align: center; /* Centraliza texto */
             margin-bottom: 20px; /* Adiciona margem inferior */
+            border: 2px solid #ccc;
         }
 
         .container {
@@ -68,11 +70,13 @@
         }
 
         .buttons-container {
-            margin-top: 20px; /* Adiciona margem superior */
+            display: flex;
+            justify-content: center; /* Centraliza os botões horizontalmente */
         }
 
         .cool-button {
-            margin: 0 5px; /* Adiciona margem aos botões */
+            margin-bottom: 50px; /* Define a margem horizontal entre os botões */
+            width: 200px;
         }
     </style>
 </head>

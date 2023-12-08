@@ -16,6 +16,8 @@
             background-color: #f2f2f2; /* Fundo cinza */
             border-radius: 5px; /* Cantos arredondados */
             max-height: 170px; /* Altura máxima do contêiner */
+            border: 2px solid #ccc;
+            text-align: center; /* Centraliza texto */
         }
 
         /* Alinhamento à esquerda da tela */
@@ -35,7 +37,31 @@
             display: flex; /* Usando flexbox */
             justify-content: center; /* Centraliza conteúdo na horizontal */
             align-items: center; /* Centraliza conteúdo na vertical */
+            gap: 20px; /* Espaçamento entre os elementos filhos */
         }
+
+        .plot-select {
+            margin-left: 10px; /* Ajusta a margem esquerda do select */
+        }
+
+        .plot-label {
+            margin-right: 10px; /* Ajusta a margem direita do rótulo */
+        }
+
+        .canvas-container {
+            margin-top: 20px; /* Adiciona margem superior */
+        }
+
+        .buttons-container {
+            display: flex;
+            justify-content: center; /* Centraliza os botões horizontalmente */
+        }
+
+        .cool-button {
+            margin-bottom: 10px; /* Define a margem horizontal entre os botões */
+            width: 200px;
+        }
+
     </style>
 </head>
 <body>
@@ -52,7 +78,14 @@
         <div class="container">
             <!-- Conteúdo para seleção de gráficos -->
             <div class="input-container">
+                <label for="inputImage">Upload Graph File:</label>
                 <input type="file" id="inputImage" accept="image/*">
+
+                <label for="plotType" class="plot-label">Select Graph Type:</label>
+                <select id="plotType" class="plot-select">
+                    <option value="line">Line Plot</option>
+                    <option value="scatter">Scatter Plot</option>
+                </select>
             </div>
             <div class="canvas-container">
                 <canvas id="canvas"></canvas>
@@ -72,6 +105,9 @@
     <!-- ... (seu restante de código HTML permanece inalterado) ... -->
 </body>
 </html>
+
+
+
 
 
 
