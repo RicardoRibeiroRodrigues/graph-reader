@@ -11,8 +11,8 @@ import re
 DEBUG = os.environ.get('DEBUG', False)
 if not DEBUG:
     # Find the path to the tesseract executable
-    pytesseract.pytesseract.tesseract_cmd = os.environ.get(
-        'TESSERACT_PATH', "/usr/bin/tesseract")
+    pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_PATH', "./tesseract")
+
 
 
 app = Flask(__name__)
@@ -256,8 +256,8 @@ def handdrawn_graph():
         "threshold": 100,
         "k": 5,
         "blur": 3,
-        "pad_size_x": 15,
-        "pad_size_y": 15,
+        "pad_size_x": .1,
+        "pad_size_y": .1,
     }
     return render_template('handdrawn.html', **default_configs)
 
@@ -266,16 +266,39 @@ def handdrawn_graph():
 def process_syntetic_graph():
     try:
         image_data = request.files['image'].read()
+        graph_box = request.form['graphBox']
+        axis_x_box = request.form['axisXBox']
+        axis_y_box = request.form['axisYBox']
+        
+        graph_box = get_bounding_box(json.loads(graph_box))
         image = cv2_image_from_bytes(image_data)
-        width = request.form['width']
-        height = request.form['height']
         graph_box = request.form['graphBox']
         axis_x_box = request.form['axisXBox']
         axis_y_box = request.form['axisYBox']
         processed_image_data = process_image(
             image_data, graph_box, axis_x_box, axis_y_box, width, height)
-        response = make_response(processed_image_data)
-        response.headers['Content-Type'] = 'image/png'
+#         response = make_response(processed_image_data)
+#         response.headers['Content-Type'] = 'image/png'
+
+        syntetic_graph_pipeline = SynteticGraphPipeline(graph_box, 10, 50, 10, 100)
+        syntetic_graph_pipeline.threshold_image(
+            image, low_threshold=50, high_threshold=150, k=5
+        )
+
+        plot_type = request.form['plotType']
+        # Remove the "" from the string
+        plot_type = plot_type[1:-1]
+    
+        # Processamento adicional: encontrar pontos do gráfico
+        csv_data = syntetic_graph_pipeline.find_graph_points(
+            image.copy(), plot_type
+        )
+        session['pipeline'] = syntetic_graph_pipeline.toDict()
+
+        # Retorna o CSV com as coordenadas dos pontos do gráfico
+        response = make_response(csv_data)
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=graph.csv'
         return response
     except Exception as e:
         print(e)
@@ -344,12 +367,12 @@ def process_hand_graph_1():
 @app.route('/process-image-hand-2', methods=['POST'])
 def process_hand_graph_2():
     try:
-        pad_size_y = pad_size_x = 15
+        pad_size_y = pad_size_x = 0.1
         if 'pad_size_x' in request.form:
-            pad_size_x = int(request.form['pad_size_x'])
+            pad_size_x = float(request.form['pad_size_x'])
         if 'pad_size_y' in request.form:
-            pad_size_y = int(request.form['pad_size_y'])
-
+            pad_size_y = float(request.form['pad_size_y'])
+        
         img = request.files['image'].read()
         img = cv2_image_from_bytes(img)
         th_img = request.files['th_image'].read()

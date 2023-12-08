@@ -9,74 +9,66 @@ from collections import defaultdict
 DEBUG = os.environ.get("DEBUG", False)
 
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __hash__(self):
-        """
-        Hash the point using the x coordinate to allow the x coordinate to be unique
-        """
-        return hash(self.x)
-
-
 class SynteticGraphPipeline:
-    def __init__(self):
-        self.found_bbox = None
-        self.found_bbox_padded = None
-        self.lines_intersec = None
+    def __init__(self, graph_bounding_box: tuple, min_x_value: float, max_x_value: float, min_y_value: float, max_y_value: float):
         self.threshhold_config = None
+        self.graph_bounding_box = graph_bounding_box
+        # Graph labels interval
+        self.min_x_value = min_x_value
+        self.max_x_value = max_x_value
+        self.min_y_value = min_y_value
+        self.max_y_value = max_y_value
+
 
     def toDict(self):
         return {
-            "found_bbox": self.found_bbox,
-            "found_bbox_padded": self.found_bbox_padded,
-            "lines_intersec": self.lines_intersec,
             "threshhold_config": self.threshhold_config,
+            "graph_bounding_box": self.graph_bounding_box,
         }
 
     @classmethod
     def fromDict(cls, d):
         pipeline = cls()
-        pipeline.found_bbox = d["found_bbox"]
-        pipeline.found_bbox_padded = d["found_bbox_padded"]
-        pipeline.lines_intersec = d["lines_intersec"]
         pipeline.threshhold_config = d["threshhold_config"]
+        pipeline.graph_bounding_box = d["graph_bounding_box"]
         return pipeline
 
-    def normalize_point(self, shape, x, y):
-        min_y = self.found_bbox[1]
-        min_x = self.found_bbox[0]
+    def normalize_point(self, x, y):
+        # TODO: Esse aqui tem que ser os pontos adquiridos a partir dos labels
+        min_y = self.graph_bounding_box[1]
+        min_x = self.graph_bounding_box[0]
+        max_x = self.graph_bounding_box[2]
+        max_y = self.graph_bounding_box[3]
 
         # Invert the y-coordinate before normalization
-        inverted_y = shape[0] - y
+        inverted_y = max_y - y
 
         # Normalize the coordinates
-        normalized_x = (x - min_x) / (self.found_bbox[2] - min_x)
-        normalized_y = (inverted_y - min_y) / (self.found_bbox[3] - min_y)
+        normalized_x = (x - min_x) / (max_x - min_x)
+        normalized_y = (inverted_y - min_y) / (max_y - min_y)
         return normalized_x, normalized_y
 
     def threshold_image(self, img, low_threshold=50, high_threshold=150, blur_amount=3, k=5):
         # Convert to gray
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        gray = cv2.equalizeHist(gray)
-
         # Apply Canny edge detection
-        edges = cv2.Canny(gray, low_threshold, high_threshold)
+        _, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+        edges = thresh1
 
         # Optionally apply dilation based on the characteristics of synthetic plots
         if k > 1:
             kernel = np.ones((k, k), np.uint8)
             edges = cv2.dilate(edges, kernel, iterations=1)
+            edges = cv2.erode(edges, kernel, iterations=1)
+        
 
         self.threshhold_config = {
             "low_threshold": low_threshold,
             "high_threshold": high_threshold,
             "k": k,
         }
-
+        self.thresholded_image = edges
         return cv2_image_to_bytes(edges)
 
     def get_bounding_box(b_box_json):
@@ -85,6 +77,7 @@ class SynteticGraphPipeline:
         x_max = x_min + round(b_box_json['width'])
         y_max = y_min + round(b_box_json['height'])
         return x_min, y_min, x_max, y_max
+         
 
     def detect_text(img, var):
         lista_dados = []
@@ -152,3 +145,6 @@ class SynteticGraphPipeline:
                 graph_points[x] = float(np.mean(y_values))
 
         return contours, lista_dados, graph_points
+            thresholded_crop, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+        )
+        
