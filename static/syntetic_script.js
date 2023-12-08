@@ -13,6 +13,7 @@ let x, y;
 let img;
 let selectedBoundingBox = 'Graph';
 let graphBoundingBox, axisYBoundingBox, axisXBoundingBox;
+let original_image_blob;
 
 class BoundingBox {
     constructor(x_min, y_min, width, height) {
@@ -30,16 +31,13 @@ function handleImageSelect(event) {
     const reader = new FileReader();
     // reset bounding boxes
     resetBoundingBoxes();
+    original_image_blob = file;
 
     reader.onload = function (e) {
         img = new Image();
         img.onload = function () {
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-            // set canvas size to minimum of image size and screen size
-            // canvas.width = Math.min(img.width, window.innerWidth);
-            // canvas.height = Math.min(img.height, window.innerHeight);
-            // Resize image to fit canvas in the same aspect ratio
             const img_ration = img.width / img.height;
             const max_percent = 0.5;
             if (img.width > windowWidth * max_percent) {
@@ -146,16 +144,15 @@ document.getElementById('sendButton').addEventListener('click', () => {
     if ((graphBoundingBox && axisXBoundingBox && axisYBoundingBox)) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        const canvasDataUrl = canvas.toDataURL(); 
 
         const formData = new FormData();
-        formData.append('image', dataURLtoBlob(canvasDataUrl), 'image.png');
+        formData.append('image', original_image_blob, 'image.png');
         formData.append('graphBox', JSON.stringify(graphBoundingBox));
         formData.append('axisXBox', JSON.stringify(axisXBoundingBox));
         formData.append('axisYBox', JSON.stringify(axisYBoundingBox));
-        formData.append('width', JSON.stringify(canvas.width));
-        formData.append('height', JSON.stringify(canvas.height));
+        let plotType = document.getElementById('plotType').value;
+        formData.append('plotType', JSON.stringify(plotType));
+
         // resetBoundingBoxes();
 
         fetch('/process-image-syntetic', {
@@ -164,15 +161,15 @@ document.getElementById('sendButton').addEventListener('click', () => {
         })
         .then(response => response.blob())
         .then(blob => {
-            const objectURL = URL.createObjectURL(blob);
-
-            const image = new Image();
-            image.onload = function () {
-                canvasOut.width = image.width;
-                canvasOut.height = image.height;
-                ctxOut.drawImage(image, 0, 0, canvasOut.width, canvasOut.height);
-            };
-            image.src = objectURL;
+            // Create a link element and trigger the download
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.csv';
+            a.textContent = 'Download CSV';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         })
         .catch(error => console.error(error));
     } else {
