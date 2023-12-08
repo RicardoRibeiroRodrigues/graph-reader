@@ -37,12 +37,10 @@ class HandDrawnGraphPipeline:
         max_y = self.found_bbox[3]
         max_x = self.found_bbox[2]
         
-        # Invert the y-coordinate before normalization
-        inverted_y = max_y - y
-        
         # Normalize the coordinates
         normalized_x = (x - min_x) / (max_x - min_x)
-        normalized_y = (inverted_y - min_y) / (max_y - min_y)
+        normalized_y = (y - min_y) / (max_y - min_y)
+        normalized_y = 1 - normalized_y
         return normalized_x, normalized_y
 
     def threshold_image(self, img, threshold_value=100, blur_amount=3, k=5):
@@ -251,10 +249,14 @@ class HandDrawnGraphPipeline:
             *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
         )
 
-        unique_points = []
-        for i in range(0, len(sorted_x_coords), 2):
-            # print(sorted_y_coords[i])
-            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
+        x_array = np.array(sorted_x_coords)
+        y_array = np.array(sorted_y_coords)
+
+        # Find unique x values and calculate the mean y for each unique x
+        unique_x, mean_y = np.unique(x_array, return_inverse=True)
+        mean_y = np.bincount(mean_y, weights=y_array) / np.bincount(mean_y)
+
+        unique_points = [Point(x, y) for x, y in zip(unique_x, mean_y)]
 
         str_points = []
         for point in unique_points:

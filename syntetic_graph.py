@@ -32,12 +32,10 @@ class SynteticGraphPipeline:
         max_x = self.labels_bounding_box[2]
         max_y = self.labels_bounding_box[3]
 
-        # Invert the y-coordinate before normalization
-        inverted_y = max_y - y
-
         # Normalize the coordinates
         normalized_x = (x - min_x) / (max_x - min_x)
-        normalized_y = (inverted_y - min_y) / (max_y - min_y)
+        normalized_y = (y - min_y) / (max_y - min_y)
+        normalized_y = 1 - normalized_y
         return normalized_x, normalized_y
 
     def threshold_image(self, img, low_threshold=50, high_threshold=150, k=5):
@@ -129,6 +127,8 @@ class SynteticGraphPipeline:
         # processed_text_y = np.linspace(
         #     processed_text_y[0], processed_text_y[-1], len(axis_y_contours)
         # )
+        processed_text_x = sorted(processed_text_x)
+        processed_text_y = sorted(processed_text_y)
 
         print("After uniform")
         print(processed_text_x)
@@ -182,17 +182,19 @@ class SynteticGraphPipeline:
                 j += 1
             cv2.rectangle(axis_y, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        debug_image(image)
         self.labels_bounding_box = (min_x, min_y, max_x, max_y)
-        # Draw bounding box
-        cv2.circle(image, (int(min_x), int(max_y)), 5, (255, 255, 0), -1)
-        cv2.circle(image, (int(max_x), int(min_y)), 5, (255, 255, 0), -1)
+        if DEBUG:
+            # Draw bounding box
+            cv2.circle(image, (int(min_x), int(max_y)), 5, (255, 255, 0), -1)
+            cv2.circle(image, (int(max_x), int(min_y)), 5, (255, 255, 0), -1)
+            # Mark on the image the bounding box of the graph
+            debug_image(image)
         self.max_x_value = max(processed_text_x)
         self.min_x_value = min(processed_text_x)
         self.max_y_value = max(processed_text_y)
         self.min_y_value = min(processed_text_y)
-        print(f"max_x: {self.max_x_value}, max_y: {self.max_y_value}")
-        print(f"min_x: {self.min_x_value}, min_y: {self.min_y_value}")
+        print(f"Min x: {self.min_x_value}, Max x: {self.max_x_value}")
+        print(f"Min y: {self.min_y_value}, Max y: {self.max_y_value}")
 
     def detect_text(self, img, var):
         lista_dados = []
@@ -249,12 +251,10 @@ class SynteticGraphPipeline:
             altura_y, largura_y, _ = img.shape
             if largura_y < 35:
                 res_y = cv2.resize(img, (largura_y + 20, altura_y + 20))
-                debug_image(res_y)
                 extracted_text = pytesseract.image_to_string(
                     res_y, config=custom_config
                 )
             else:
-                debug_image(img)
                 extracted_text = pytesseract.image_to_string(img, config=custom_config)
 
             lista_dados.append(extracted_text)
@@ -313,13 +313,20 @@ class SynteticGraphPipeline:
         sorted_x_coords, sorted_y_coords = zip(
             *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
         )
-
-        # Take the mean of the y coordinates for each x coordinate
         
+        x_array = np.array(sorted_x_coords)
+        y_array = np.array(sorted_y_coords)
+
+        # Find unique x values and calculate the mean y for each unique x
+        unique_x, mean_y = np.unique(x_array, return_inverse=True)
+        mean_y = np.bincount(mean_y, weights=y_array) / np.bincount(mean_y)
+
+        print(f"Unique x: {unique_x.shape}")
+        print(f"Mean y: {mean_y.shape}")
 
         unique_points = []
-        for i in range(0, len(sorted_x_coords), 2):
-            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
+        for x, y in zip(unique_x, mean_y):
+            unique_points.append(Point(x, y))
 
         str_points = []
         # Calculate the multipliers for the normalized coordinates to the graph labels interval
@@ -327,7 +334,9 @@ class SynteticGraphPipeline:
         y_multiplier = self.max_y_value - self.min_y_value
 
         for point in unique_points:
+            print(point.x, point.y)
             x, y = self.normalize_point(point.x, point.y)
+            print(x, y)
             # Translate the normalized coordinates to the graph labels interval
             x = self.min_x_value + x * x_multiplier
             y = self.min_y_value + y * y_multiplier
