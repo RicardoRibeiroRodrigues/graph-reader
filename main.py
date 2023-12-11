@@ -48,42 +48,42 @@ def handdrawn_graph():
 
 @app.route('/process-image-syntetic', methods=['POST'])
 def process_syntetic_graph():
-    # try:
-    image_data = request.files['image'].read()
-    graph_box = request.form['graphBox']
-    axis_x_box = request.form['axisXBox']
-    axis_y_box = request.form['axisYBox']
-    image = cv2_image_from_bytes(image_data)
-    
-    graph_box = json.loads(graph_box)
-    axis_x_box = json.loads(axis_x_box)
-    axis_y_box = json.loads(axis_y_box)
+    try:
+        image_data = request.files['image'].read()
+        graph_box = request.form['graphBox']
+        axis_x_box = request.form['axisXBox']
+        axis_y_box = request.form['axisYBox']
+        image = cv2_image_from_bytes(image_data)
+        
+        graph_box = json.loads(graph_box)
+        axis_x_box = json.loads(axis_x_box)
+        axis_y_box = json.loads(axis_y_box)
 
-    syntetic_graph_pipeline = SynteticGraphPipeline(graph_box)
-    syntetic_graph_pipeline.process_image(
-        image.copy(), graph_box, axis_x_box, axis_y_box
-    )
+        syntetic_graph_pipeline = SynteticGraphPipeline(graph_box)
+        syntetic_graph_pipeline.process_image(
+            image.copy(), graph_box, axis_x_box, axis_y_box
+        )
 
-    syntetic_graph_pipeline.threshold_image(
-        image, low_threshold=20, high_threshold=150, k=5
-    )
+        syntetic_graph_pipeline.threshold_image(
+            image, low_threshold=20, high_threshold=150, k=5
+        )
 
-    plot_type = request.form['plotType']
-    # Remove the "" from the string
-    plot_type = plot_type[1:-1]
+        plot_type = request.form['plotType']
+        # Remove the "" from the string
+        plot_type = plot_type[1:-1]
 
-    # Processamento adicional: encontrar pontos do gráfico
-    csv_data = syntetic_graph_pipeline.find_graph_points(plot_type)
-    session['pipeline'] = syntetic_graph_pipeline.toDict()
+        # Processamento adicional: encontrar pontos do gráfico
+        csv_data = syntetic_graph_pipeline.find_graph_points(plot_type)
+        session['pipeline'] = syntetic_graph_pipeline.toDict()
 
-    # Retorna o CSV com as coordenadas dos pontos do gráfico
-    response = make_response(csv_data)
-    response.headers['Content-Type'] = 'text/csv'
-    response.headers['Content-Disposition'] = 'attachment; filename=graph.csv'
-    return response
-    # except Exception as e:
-    #     print(e)
-    #     return jsonify({'error': str(e)})
+        # Retorna o CSV com as coordenadas dos pontos do gráfico
+        response = make_response(csv_data)
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=graph.csv'
+        return response
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)})
 
 
 @app.route('/process-image-hand', methods=['POST'])

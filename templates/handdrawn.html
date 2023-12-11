@@ -28,14 +28,13 @@
             font-size: 20px; /* Tamanho da fonte aumentado */
             cursor: pointer;
             position: absolute;
-            left: 1%;
-            top: 20%; /* Ajusta a posição vertical */
+            right: 1%;
+            top: 3%; /* Ajusta a posição vertical */
             transform: translateY(-50%);
             padding: 5px 5px; /* Adiciona preenchimento interno */
             background-color: #007BFF; /* Adiciona fundo azul */
             color: white; /* Define a cor do texto como branco */
             border-radius: 5px; /* Adiciona cantos arredondados */
-            border: 2px solid #ccc;
         }
 
         #graph-info {
@@ -97,10 +96,14 @@
         <!-- Conteúdo para seleção de gráficos -->
         <div class="container">
             <div class="input-container">
-                <label for="inputImage">Upload Graph File:</label>
                 <input type="file" id="inputImage" accept="image/*">
 
-                <label for="plotType" class="plot-label">Select Plot Type:</label>
+                <label class="toggle-button">
+                    <input type="checkbox" id="toggleSwitch">
+                    <span class="button"></span>
+                    <span class="label-input">In</span>
+                    <span class="label-output">Out</span>
+                </label>
                 <select id="plotType" class="plot-select">
                     <option value="line">Line Plot</option>
                     <option value="scatter">Scatter Plot</option>
@@ -108,13 +111,17 @@
             </div>
 
             <div class="canvas-container">
-                <canvas id="canvas"></canvas>
+                <div id="inputCanvasContainer">
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div id="outputCanvasContainer" style="display:none;">
+                    <canvas id="canvas-output"></canvas>
+                </div>
                 <div class="buttons-container" id="buttons-container">
                     <button class="cool-button" id="resetButton">Reset</button>
                     <button class="cool-button" id="sendButton">Send</button>
                 </div>
             </div>
-            <canvas id="canvas-output"></canvas>
         </div>
     </div>
 </body>

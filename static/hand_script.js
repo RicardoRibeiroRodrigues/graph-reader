@@ -219,3 +219,30 @@ function closeNav() {
     document.getElementById("main").style.marginLeft = "0";
     document.getElementById("openConfig").style.display = "block";
 }
+
+// Close Nav on esq key
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        closeNav();
+    }
+    if (event.key === 'o') {
+        openNav();
+    }
+});
+
+// JavaScript code to toggle between input and output canvases
+var toggleSwitch = document.getElementById('toggleSwitch');
+var inputCanvasContainer = document.getElementById('inputCanvasContainer');
+var outputCanvasContainer = document.getElementById('outputCanvasContainer');
+
+toggleSwitch.addEventListener('change', function () {
+    if (toggleSwitch.checked) {
+        // Display output canvas
+        inputCanvasContainer.style.display = 'none';
+        outputCanvasContainer.style.display = 'block';
+    } else {
+        // Display input canvas
+        inputCanvasContainer.style.display = 'block';
+        outputCanvasContainer.style.display = 'none';
+    }
+});

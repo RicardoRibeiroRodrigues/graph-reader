@@ -209,3 +209,73 @@ header {
     box-shadow: 0 0 5px rgba(81, 203, 238, 1); /* Adicione um efeito de sombra quando estiver em foco */
 }
 
+
+/* CSS for styling the toggle button with labels */
+.toggle-button {
+    position: relative;
+    display: inline-block;
+    width: 100px;
+    height: 40px;
+    margin-right: 1rem;
+}
+
+.toggle-button input {
+    display: none;
+}
+
+.button {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 40px;
+}
+
+.label-input, .label-output {
+    color: #2196F3;
+    text-align: center;
+    line-height: 40px;
+    position: absolute;
+    width: 50%;
+    top: 0;
+    font-size: 14px;
+}
+
+.label-input {
+    left: 0;
+    color: black;
+}
+
+.label-output {
+    right: 0;
+}
+
+.toggle-button input:checked + .button {
+    background-color: #2196F3;
+}
+
+.toggle-button input:focus + .button {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+.toggle-button input:checked + .button:before {
+    transform: translateX(90%);
+}
+
+.toggle-button .button:before {
+    content: "";
+    position: absolute;
+    height: 36px;
+    width: 36px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 50%;
+}
