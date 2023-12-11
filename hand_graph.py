@@ -1,22 +1,10 @@
 import cv2
 import numpy as np
-import json
 from utils import *
 import os
 
 DEBUG = os.environ.get("DEBUG", False)
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-    
-    def __hash__(self):
-        """
-        Hash the point using the x coordinate to allow the x coordinate to be unique
-        """
-        return hash(self.x)
-    
 
 class HandDrawnGraphPipeline:
     def __init__(self):
@@ -43,16 +31,16 @@ class HandDrawnGraphPipeline:
         return pipeline
 
     
-    def normalize_point(self, shape, x, y):
+    def normalize_point(self, x, y):
         min_y = self.found_bbox[1]
         min_x = self.found_bbox[0]
-        
-        # Invert the y-coordinate before normalization
-        inverted_y = shape[0] - y
+        max_y = self.found_bbox[3]
+        max_x = self.found_bbox[2]
         
         # Normalize the coordinates
-        normalized_x = (x - min_x) / (self.found_bbox[2] - min_x)
-        normalized_y = (inverted_y - min_y) / (self.found_bbox[3] - min_y)
+        normalized_x = (x - min_x) / (max_x - min_x)
+        normalized_y = (y - min_y) / (max_y - min_y)
+        normalized_y = 1 - normalized_y
         return normalized_x, normalized_y
 
     def threshold_image(self, img, threshold_value=100, blur_amount=3, k=5):
@@ -128,7 +116,7 @@ class HandDrawnGraphPipeline:
         return cv2_image_to_bytes(img)
 
 
-    def find_handdrawn_bbox(self, img, thresholded, pad_size_x=30, pad_size_y=30) -> list:
+    def find_handdrawn_bbox(self, img, thresholded, pad_size_x_percent=0.15, pad_size_y_percent=0.15) -> list:
         original_img = img.copy()
         most_orthogonal_lines_intersec = self.lines_intersec
 
@@ -168,7 +156,7 @@ class HandDrawnGraphPipeline:
         )
 
         # Concatenate the source points of both bounding boxes
-        corrected_image, new_bbox = perspective_removal(
+        corrected_image, _ = perspective_removal(
             original_img, source_points_1, dest_points
         )
         
@@ -184,6 +172,8 @@ class HandDrawnGraphPipeline:
             max_y = int(max(max_y, point[1]))
 
         # Pad the bounding box to exclude the axis
+        pad_size_x = int((max_x - min_x) * pad_size_x_percent)
+        pad_size_y = int((max_y - min_y) * pad_size_y_percent)
         self.found_bbox_padded = (
             min_x + pad_size_x,
             min_y + pad_size_y,
@@ -198,7 +188,6 @@ class HandDrawnGraphPipeline:
             2,
         )
         self.found_bbox = (min_x, min_y, max_x, max_y)
-        self.corrected_image = corrected_image
         return cv2_image_to_bytes(corrected_image)
 
     def find_graph_points(self, img, graph_type: str):
@@ -230,17 +219,13 @@ class HandDrawnGraphPipeline:
             biggest_contour[:, :, 1] += self.found_bbox_padded[1]
             cv2.drawContours(img, [biggest_contour], 0, (0, 0, 255), 2)
             cv2.drawContours(mask, [biggest_contour], 0, 255, -1)
-            # Get the bounding box of the contour
-            # x_rect, y_rect, w, h = cv2.boundingRect(biggest_contour)
-            # cv2.rectangle(img, (x_rect, y_rect), (x_rect + w, y_rect + h), (255, 255, 0), 2)
-            # # Crop the image to the bounding box
-            # img_th = th[y_rect : y_rect + h, x_rect : x_rect + w]
         elif graph_type == "scatter":
             # If is a scatter plot, consider all the contours
             avg_area = sum([cv2.contourArea(contour) for contour in contours]) / len(contours)
             print("Average area: ", avg_area)
             for contour in contours:
-                if cv2.contourArea(contour) > avg_area * 1.3:
+                # Ignore contours that are too big (probably some part of the axis)
+                if cv2.contourArea(contour) > avg_area * 1.5:
                     continue
                 # Add the padding to the contour, so it is in the original position
                 contour[:, :, 0] += self.found_bbox_padded[0]
@@ -264,32 +249,18 @@ class HandDrawnGraphPipeline:
             *sorted(zip(x_coords, y_coords), key=lambda point: point[0])
         )
 
-        unique_points = []
-        for i in range(0, len(sorted_x_coords), 2):
-            # print(sorted_y_coords[i])
-            unique_points.append(Point(sorted_x_coords[i], sorted_y_coords[i]))
+        x_array = np.array(sorted_x_coords)
+        y_array = np.array(sorted_y_coords)
 
-        # # Remove duplicate x coordinates
-        # unique_points = set()
-        # for x, y in zip(x_coords, y_coords):
-        #     point = Point(x, y)
-        #     unique_points.add(point)
+        # Find unique x values and calculate the mean y for each unique x
+        unique_x, mean_y = np.unique(x_array, return_inverse=True)
+        mean_y = np.bincount(mean_y, weights=y_array) / np.bincount(mean_y)
 
-        # for x in range(0, img_th.shape[1], 2):
-        #     avg_y_position = 0
-        #     count_points = 0
-        #     for y in range(img_th.shape[0]):
-        #         if img_th[y, x] == 255:
-        #             avg_y_position += y
-        #             count_points += 1
-            
-        #     if count_points != 0:
-        #         avg_y_position /= count_points
-        #         unique_x_coords.append(x + x_rect)
-        #         unique_y_coords.append(avg_y_position + y_rect)
+        unique_points = [Point(x, y) for x, y in zip(unique_x, mean_y)]
+
         str_points = []
         for point in unique_points:
-            x, y = self.normalize_point(img.shape, point.x, point.y)
+            x, y = self.normalize_point(point.x, point.y)
             str_points.append(f"{x},{y}\n")
         
         csv_str = "".join(str_points)
