@@ -7,20 +7,81 @@
     <link rel="stylesheet" href="/static/styles.css">
     <script defer src="/static/syntetic_script.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0">
+    <style>
+        /* Estilos */
+        #graph-info {
+            width: 80%; /* Define a largura para cobrir 80% da largura total */
+            margin: 40px auto; /* Centraliza na horizontal e define margem superior */
+            padding: 20px; /* Adiciona padding interno */
+            background-color: #f2f2f2; /* Fundo cinza */
+            border-radius: 5px; /* Cantos arredondados */
+            max-height: 170px; /* Altura máxima do contêiner */
+            border: 2px solid #ccc;
+            text-align: center; /* Centraliza texto */
+        }
+
+        /* Alinhamento à esquerda da tela */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #main {
+            display: flex;
+            justify-content: center; /* Centraliza conteúdo na horizontal */
+        }
+
+        .container {
+            width: 50%; /* Ajustando a largura da parte principal */
+            margin-left: 10px; /* Adicionando uma margem à esquerda */
+            display: flex; /* Usando flexbox */
+            justify-content: center; /* Centraliza conteúdo na horizontal */
+            align-items: center; /* Centraliza conteúdo na vertical */
+            gap: 20px; /* Espaçamento entre os elementos filhos */
+        }
+
+        .plot-select {
+            margin-left: 10px; /* Ajusta a margem esquerda do select */
+        }
+
+        .plot-label {
+            margin-right: 10px; /* Ajusta a margem direita do rótulo */
+        }
+
+        .canvas-container {
+            margin-top: 20px; /* Adiciona margem superior */
+        }
+
+        .buttons-container {
+            display: flex;
+            justify-content: center; /* Centraliza os botões horizontalmente */
+        }
+
+        .cool-button {
+            margin-bottom: 10px; /* Define a margem horizontal entre os botões */
+            width: 200px;
+        }
+
+    </style>
 </head>
 <body>
     {% include 'header.html' %}
-    <div id="sidebar">
-        <a href="javascript:void(0)" class="closebtn" onclick="toggleSidebar()">&times;</a>
-        <a href="#">Option 1</a>
-        <a href="#">Option 2</a>
-        <a href="#">Option 3</a>
+
+    <!-- Adicionando texto informativo centralizado e mais largo -->
+    <div id="graph-info">
+        <h2>Synthetic Graph Selection</h2>
+        <p>Here you can select the bounding box of the graph (Line Plot or Scatter Plot), the Y-axis, and the X-axis. Utilize the provided buttons to accurately select and extract the necessary information from the graph. Remember to check the results, if it was not good, try again.</p>
     </div>
 
+    <!-- Divisão principal para o conteúdo gráfico -->
     <div id="main">
         <div class="container">
+            <!-- Conteúdo para seleção de gráficos -->
             <div class="input-container">
+                <label for="inputImage">Upload Graph File:</label>
                 <input type="file" id="inputImage" accept="image/*">
+              
+                <label for="plotType" class="plot-label">Select Graph Type:</label>
                 <select id="plotType" class="plot-select">
                     <option value="line">Line Plot</option>
                     <option value="scatter">Scatter Plot</option>
@@ -40,8 +101,17 @@
             <canvas id="canvas-output"></canvas>
         </div>
     </div>
+
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 
