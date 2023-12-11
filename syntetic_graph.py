@@ -95,7 +95,7 @@ class SynteticGraphPipeline:
 
         return contours
 
-    def process_image(self, image, b_box_graph, b_box_x, b_box_y):
+    def process_image(self, image, b_box_graph, b_box_x, b_box_y, is_x_rotated=False):
         x_min, y_min, x_max, y_max = get_bounding_box(b_box_graph)
         graph = image[y_min:y_max, x_min:x_max]
 
@@ -106,7 +106,7 @@ class SynteticGraphPipeline:
         axis_y = image[y_min_axy:y_max, x_min_axy:x_max]
 
         graph_contours = self.detect_contours(graph)
-        axis_x_contours, text_x = self.detect_text(axis_x, "x")
+        axis_x_contours, text_x = self.detect_text(axis_x, "x", is_x_rotated)
         axis_y_contours, text_y = self.detect_text(axis_y, "y")
 
         processed_text_x = self.process_detected_text(text_x)
@@ -194,7 +194,7 @@ class SynteticGraphPipeline:
             print(f"Min x: {self.min_x_value}, Max x: {self.max_x_value}")
             print(f"Min y: {self.min_y_value}, Max y: {self.max_y_value}")
 
-    def detect_text(self, img, var):
+    def detect_text(self, img, var, is_x_rotated=False):
         lista_dados = []
         original_dim = img.shape[:2]
         # Scale img to 300 dpi
@@ -218,31 +218,35 @@ class SynteticGraphPipeline:
         )
 
         if var == "x":
-            custom_config = r"--psm 8 -c tessedit_char_whitelist=0123456789.-ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-            for contour in contours:
-                x, y, w, h = cv2.boundingRect(contour)
-                if w < 30:
-                    copy_img = img.copy()
-                    res_x = cv2.resize(
-                        copy_img[y : y + h, x : x + w], (w + 20, h + 20), interpolation=cv2.INTER_CUBIC
+            if is_x_rotated:
+                # Rotate the image
+                rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                altura_x, largura_x, _ = img.shape
+                if largura_x < 35:
+                    res_x = cv2.resize(rotated, (largura_x + 20, altura_x + 20))
+                    extracted_text = pytesseract.image_to_string(
+                        res_x, config=custom_config
                     )
-                    extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
                 else:
-                    extracted_text = pytesseract.image_to_string(img[y : y + h, x : x + w], config=custom_config)
-                lista_dados.append(extracted_text)
-            # Abordagem anterior.
-            # altura_x, largura_x, _ = img.shape
-            # if altura_x < 30:
-            #     res_x = cv2.resize(
-            #         img, (largura_x + 20, altura_x + 20), interpolation=cv2.INTER_CUBIC
-            #     )
-            #     debug_image(res_x)
-            #     extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
-            # else:
-            #     debug_image(img)
-            #     extracted_text = pytesseract.image_to_string(img, config=custom_config)
+                    extracted_text = pytesseract.image_to_string(
+                        rotated, config=custom_config
+                    )
 
-            # lista_dados.append(extracted_text)
+                lista_dados.append(extracted_text)
+            else:
+                custom_config = r"--psm 8 -c tessedit_char_whitelist=0123456789.-ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                for contour in contours:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    if w < 30:
+                        copy_img = img.copy()
+                        res_x = cv2.resize(
+                            copy_img[y : y + h, x : x + w], (w + 20, h + 20), interpolation=cv2.INTER_CUBIC
+                        )
+                        extracted_text = pytesseract.image_to_string(res_x, config=custom_config)
+                    else:
+                        extracted_text = pytesseract.image_to_string(img[y : y + h, x : x + w], config=custom_config)
+                    lista_dados.append(extracted_text)
 
         if var == "y":
             custom_config = r"--psm 6 -c tessedit_char_whitelist=0123456789.-"

@@ -16,39 +16,6 @@
             font-family: Arial, sans-serif;
         }
 
-        #main {
-            display: flex;
-            flex-direction: column; /* Layout em coluna */
-            align-items: center; /* Centraliza na horizontal */
-            justify-content: center; /* Centraliza na vertical */
-            margin-top: 20px; /* Adiciona margem superior */
-        }
-
-        #openConfig {
-            font-size: 20px; /* Tamanho da fonte aumentado */
-            cursor: pointer;
-            position: absolute;
-            right: 1%;
-            top: 3%; /* Ajusta a posição vertical */
-            transform: translateY(-50%);
-            padding: 5px 5px; /* Adiciona preenchimento interno */
-            background-color: #007BFF; /* Adiciona fundo azul */
-            color: white; /* Define a cor do texto como branco */
-            border-radius: 5px; /* Adiciona cantos arredondados */
-        }
-
-        #graph-info {
-            width: 60%; /* Define a largura para cobrir 60% da largura total */
-            padding: 20px; /* Adiciona padding interno */
-            background-color: #f2f2f2; /* Fundo cinza */
-            border-radius: 5px; /* Cantos arredondados */
-            max-height: 200px; /* Altura máxima do contêiner */
-            overflow-y: auto; /* Adicionar barra de rolagem caso o conteúdo ultrapasse a altura máxima */
-            text-align: center; /* Centraliza texto */
-            margin-bottom: 20px; /* Adiciona margem inferior */
-            border: 2px solid #ccc;
-        }
-
         .container {
             width: 60%; /* Ajustando a largura da parte principal */
             text-align: center; /* Centraliza elementos */
@@ -97,6 +64,8 @@
         <div class="container">
             <div class="input-container">
                 <input type="file" id="inputImage" accept="image/*">
+                <label id="file-input-label" for="inputImage">Select Graph Image</label>
+
 
                 <label class="toggle-button">
                     <input type="checkbox" id="toggleSwitch">

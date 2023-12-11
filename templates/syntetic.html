@@ -78,14 +78,26 @@
         <div class="container">
             <!-- Conteúdo para seleção de gráficos -->
             <div class="input-container">
-                <label for="inputImage">Upload Graph File:</label>
-                <input type="file" id="inputImage" accept="image/*">
+                <input type="file" id="inputImage" accept="image/*" >
+                <label id="file-input-label" for="inputImage">Select Graph Image</label>
+
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    Axis X Rotation:
+                    <label class="toggle-button">
+                        <input type="checkbox" id="toggleSwitch">
+                        <span class="button"></span>
+                        <span class="label-input">0°</span>
+                        <span class="label-output">90°</span>
+                    </label>
+                </div>
               
-                <label for="plotType" class="plot-label">Select Graph Type:</label>
-                <select id="plotType" class="plot-select">
-                    <option value="line">Line Plot</option>
-                    <option value="scatter">Scatter Plot</option>
-                </select>
+                <div style="display: flex; ">
+                    <label for="plotType" class="plot-label">Graph Type:</label>
+                    <select id="plotType" class="plot-select">
+                        <option value="line">Line Plot</option>
+                        <option value="scatter">Scatter Plot</option>
+                    </select>
+                </div>
             </div>
             <div class="canvas-container">
                 <canvas id="canvas"></canvas>

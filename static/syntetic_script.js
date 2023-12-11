@@ -14,6 +14,7 @@ let img;
 let selectedBoundingBox = 'Graph';
 let graphBoundingBox, axisYBoundingBox, axisXBoundingBox;
 let original_image_blob;
+let isXAxisRotated = false;
 
 class BoundingBox {
     constructor(x_min, y_min, width, height) {
@@ -150,6 +151,7 @@ document.getElementById('sendButton').addEventListener('click', () => {
         formData.append('graphBox', JSON.stringify(graphBoundingBox));
         formData.append('axisXBox', JSON.stringify(axisXBoundingBox));
         formData.append('axisYBox', JSON.stringify(axisYBoundingBox));
+        formData.append('isXAxisRotated', JSON.stringify(isXAxisRotated));
         let plotType = document.getElementById('plotType').value;
         formData.append('plotType', JSON.stringify(plotType));
 
@@ -182,3 +184,38 @@ function resetBoundingBoxes() {
     axisXBoundingBox = null;
     axisYBoundingBox = null;
 }
+
+function openNav() {
+    document.getElementById("sidebar").style.width = "250px";
+    document.getElementById("main").style.marginLeft = "250px";
+    document.getElementById("openConfig").style.display = "none";
+}
+
+function closeNav() {
+    document.getElementById("sidebar").style.width = "0";
+    document.getElementById("main").style.marginLeft = "0";
+    document.getElementById("openConfig").style.display = "block";
+}
+
+// Close Nav on esq key
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        closeNav();
+    }
+    if (event.key === 'o') {
+        openNav();
+    }
+});
+
+// JavaScript code to toggle between input and output canvases
+var toggleSwitch = document.getElementById('toggleSwitch');
+
+toggleSwitch.addEventListener('change', function () {
+    if (toggleSwitch.checked) {
+        isXAxisRotated = true;
+        console.log('checked');
+    } else {
+        isXAxisRotated = false;
+        console.log('unchecked');
+    }
+});

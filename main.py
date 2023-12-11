@@ -53,6 +53,9 @@ def process_syntetic_graph():
         graph_box = request.form['graphBox']
         axis_x_box = request.form['axisXBox']
         axis_y_box = request.form['axisYBox']
+        is_axis_x_rotated = request.form['isXAxisRotated']
+        is_axis_x_rotated = is_axis_x_rotated == 'true'
+        print(f"{is_axis_x_rotated=}")
         image = cv2_image_from_bytes(image_data)
         
         graph_box = json.loads(graph_box)
@@ -61,7 +64,7 @@ def process_syntetic_graph():
 
         syntetic_graph_pipeline = SynteticGraphPipeline(graph_box)
         syntetic_graph_pipeline.process_image(
-            image.copy(), graph_box, axis_x_box, axis_y_box
+            image.copy(), graph_box, axis_x_box, axis_y_box, is_axis_x_rotated
         )
 
         syntetic_graph_pipeline.threshold_image(

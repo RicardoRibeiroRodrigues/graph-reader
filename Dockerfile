@@ -5,13 +5,13 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
-# COPY . /app
+COPY . /app
 
 # Download tesseract
 RUN apt-get update && apt-get install -y tesseract-ocr
 
 # Install the required packages
-RUN pip install Flask opencv-python-headless pytesseract
+RUN pip install -r requirements.txt
 
 # Expose the port the app runs on
 EXPOSE 5000

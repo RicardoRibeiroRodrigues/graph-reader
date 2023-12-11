@@ -53,9 +53,10 @@ button {
 }
 
 .input-container {
+    width: 100%;
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    justify-content: space-evenly;
     align-content: center;
     margin: 0 10px;
 }
@@ -182,7 +183,6 @@ header {
     margin-left: 20px; /* Adiciona espaço na parte inferior */
     /* Outros estilos conforme necessário */
     display: inline; /* Defina o display como inline */
-
 }
 
 /* Estilização para o select */
@@ -214,8 +214,8 @@ header {
 .toggle-button {
     position: relative;
     display: inline-block;
-    width: 100px;
-    height: 40px;
+    width: 86px;
+    height: 45px;
     margin-right: 1rem;
 }
 
@@ -264,18 +264,82 @@ header {
 }
 
 .toggle-button input:checked + .button:before {
-    transform: translateX(90%);
+    transform: translateX(100%);
 }
 
 .toggle-button .button:before {
     content: "";
     position: absolute;
-    height: 36px;
-    width: 36px;
+    height: 41px;
+    width: 41px;
     left: 2px;
     bottom: 2px;
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%;
+}
+
+
+#main {
+    display: flex;
+    flex-direction: column; /* Layout em coluna */
+    align-items: center; /* Centraliza na horizontal */
+    justify-content: center; /* Centraliza na vertical */
+    margin-top: 20px; /* Adiciona margem superior */
+}
+
+#openConfig {
+    font-size: 20px; /* Tamanho da fonte aumentado */
+    cursor: pointer;
+    position: absolute;
+    right: 1%;
+    top: 3%; /* Ajusta a posição vertical */
+    transform: translateY(-50%);
+    padding: 5px 5px; /* Adiciona preenchimento interno */
+    background-color: #007BFF; /* Adiciona fundo azul */
+    color: white; /* Define a cor do texto como branco */
+    border-radius: 5px; /* Adiciona cantos arredondados */
+}
+
+#graph-info {
+    width: 60%; /* Define a largura para cobrir 60% da largura total */
+    padding: 20px; /* Adiciona padding interno */
+    background-color: #f2f2f2; /* Fundo cinza */
+    border-radius: 5px; /* Cantos arredondados */
+    max-height: 200px; /* Altura máxima do contêiner */
+    overflow-y: auto; /* Adicionar barra de rolagem caso o conteúdo ultrapasse a altura máxima */
+    text-align: center; /* Centraliza texto */
+    margin-bottom: 20px; /* Adiciona margem inferior */
+    border: 2px solid #ccc;
+}
+
+#file-input-label {
+    margin-right: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5%;
+    /* Center text */
+    text-align: center;
+    /* Center container */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0.2 1 auto;
+}
+
+#file-input-label:hover {
+    cursor: pointer;
+    background-color: #f2f2f2;
+}
+
+#inputImage {
+  display: none;
+}
+
+.RotatedSwitchContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ccc;
 }
