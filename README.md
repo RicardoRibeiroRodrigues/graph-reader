@@ -21,3 +21,15 @@ Graph2CSV is a tool designed to convert both synthetic and hand-drawn graphs int
    - Upload the hand-drawn graph image.
    - Adjust any necessary settings for threshold, blur, K values, etc.
    - Click 'Send' to generate the corresponding CSV file.
+
+## How to run locally
+There are 2 different options
+
+1. **Using Docker**
+   - Download docker at https://www.docker.com/products/docker-desktop/
+   - Run at terminal: *docker compose run --build -p 5000:5000 web*
+
+2. **Installing Dependencies**
+   - apt install tesseract-ocr
+   - pip install -r requirements.txt
+   - Run at terminal: python3 main.py
